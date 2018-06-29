@@ -1,0 +1,168 @@
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
+if (!requireNamespace("nrsmisc", quietly = TRUE)) devtools::install_github("adamdsmith/nrsmisc")
+if (!requireNamespace("MABMreportr", quietly = TRUE)) devtools::install_github("adamdsmith/MABMreportr")
+pacman::p_load(nrsmisc, raster, dplyr, sf, lubridate, maptools)
+other_packs <- c("riem", "geonames", "geosphere", "readxl", "rlang")
+invisible(sapply(other_packs, function(i) {
+    if (!requireNamespace(i, quietly = TRUE))
+        install.packages(i, verbose = FALSE)
+}))
+options(stringsAsFactors = FALSE, scipen = 999)
+
+# Export relevant tables from MABM Access database
+MABMreportr:::setup_MABM_reports(MABM_access_db = "../Data/R4_MABM_database2.accdb",
+                                 export_dir = normalizePath("./Output/Raw_DB_output"))
+
+# Get list of participating routes (stations may host >1 route)
+MABM_routes <- readxl::read_excel("./Output/Raw_DB_output/MABM_routes.xlsx") %>%
+  select(station = ORGNAME,
+         site = Site_Name,
+         site_notes = Loc_Notes,
+         len_mi = Rte_length,
+         lat = Centroid_Y_Coord,
+         lon = Centroid_X_Coord,
+         state = State) %>%
+  filter(!is.na(lat)|!is.na(lon)) %>%
+  rowwise() %>%
+  mutate(wx_stns = paste(find_wx_stns(lon, lat, asos_only = TRUE), collapse = ", ")) %>%
+  arrange(site)
+
+# Get timezone of each station
+options(geonamesHost = "api.geonames.org")
+options(geonamesUsername = "adam_d_smith")
+timez <- rep("", nrow(MABM_routes))
+for (i in seq_along(timez)) {
+  timez[i] <- as.character(geonames::GNtimezone(MABM_routes$lat[i], MABM_routes$lon[i])$timezoneId)
+}
+MABM_routes$timezone <- timez
+# Set timezone for Patoka River Lake manually as they operate on Central time
+MABM_routes[grep("PtkNWR", MABM_routes$site), "timezone"] <- "America/Chicago"
+timez <- unique(MABM_routes$timezone)
+saveRDS(MABM_routes, file = "./Output/MABM_routes.rds")
+
+MABM_survey_info <- readxl::read_excel("./Output/Raw_DB_output/MABM_survey_details.xlsx") %>%
+  select(site = starts_with("Site Name"),
+         surv_date = starts_with("Date Start"),
+         surv_time = starts_with("Time Start"),
+         gps = starts_with("GPS"),
+         complete = starts_with("Rt Compl"),
+         notes = Notes) %>%
+  left_join(MABM_routes[, c("site", "timezone")], by = "site") %>%
+  rowwise() %>%
+  mutate(surv_dt_gmt = ymd_hm(paste(surv_date, surv_time), tz = timezone)) %>%
+  ungroup() %>%
+  mutate(gps = as.logical(gps),
+         complete = as.logical(complete),
+         notes = ifelse(is.na(notes), "", notes)) %>%
+  select(site, surv_date, surv_dt_gmt, gps, complete, notes)
+attributes(MABM_survey_info$surv_dt_gmt)$tzone <- "GMT"    
+
+## Get sunset times to calculate time since set and associated weather data
+sunsets <- left_join(MABM_survey_info[, c("site", "surv_date")],
+                     MABM_routes[, c("site", "timezone", "lat", "lon")],
+                     by = "site") %>%
+  left_join(MABM_routes[, c("site", "wx_stns")], by = "site") %>%
+  rowwise() %>%
+  mutate(ss_dt_gmt = get_sun(lon, lat, surv_date, direction = "sunset")$sunset) %>%
+  ungroup()
+
+# Import function to get wx near sunset
+source("./R/get_sunset_wx.R")
+
+wx <- sunsets %>%
+  group_by(site, surv_date, ss_dt_gmt) %>%
+  # Add weather data at/near sunset
+  # ss_temp = temperature (Celsius) near sunset
+  # ss_wsp = wind speed (m/s) near sunset
+  # ss_wx_t_diff = time difference (min) between sunset and weather observations
+  # wx_stn = weather station of observations
+  # Takes ~ 2 h
+  do(get_sunset_wx(.$wx_stns, .$surv_date, .$ss_dt_gmt, .$lat, .$lon)) %>%
+  ungroup()
+
+## Combine with survey information
+MABM_survey_info <- MABM_survey_info %>%
+  left_join(sunsets, by = c("site", "surv_date")) %>%
+  select(-wx_stns) %>%
+  left_join(wx, by = c("site", "surv_date", "ss_dt_gmt")) %>%
+  mutate(ss_surv_t_diff = as.numeric(round(difftime(surv_dt_gmt, ss_dt_gmt, units = c("mins")), 2))) %>%
+  filter(yday(surv_date) %in% 145:213, # 25 May through 31 July
+         year(surv_date) %in% 2012:2017) %>%
+  mutate(doy = yday(surv_date))
+saveRDS(MABM_survey_info, file = "./Output/MABM_survey_info.rds")
+
+# Get the call data...
+MABM_calls_raw <- readxl::read_excel("./Output/Raw_DB_output/MABM_calls_raw.xlsx") %>%
+  select(site = Site_Name, lat = LAT, lon = LONG, FILENAME, spp = A_SP, A_Spper,
+         A_Dprob, n_pulse = A_pulse, surv_date = contains("Date Start")) %>%
+  mutate(spp_pulse_prop = round(A_Spper, 1),
+         spp_dprob = round(A_Dprob, 2),
+         year = as.integer(format(surv_date, "%Y"))) %>%
+  left_join(MABM_routes[, c("site", "timezone")], by = "site")
+
+fixed_tz <- lapply(timez, function(t) {
+  tmp <- MABM_calls_raw %>%
+    filter(timezone == t) %>%
+      mutate(call_date = ifelse(substr(FILENAME, 5, 6) %in% c("24", "01", "02", "03", "04"),
+                                as.character(surv_date + as.difftime(1, units = "days")),
+                                as.character(surv_date)),
+             call_dt = ymd_hms(paste(call_date,
+                                     paste(ifelse(substr(FILENAME, 5, 6) != "24",
+                                                  substr(FILENAME, 5, 6), "00"),
+                                           substr(FILENAME, 7, 8),
+                                           substr(FILENAME, 10, 11), sep = ":")),
+                               tz = t),
+             call_dt_gmt = call_dt)
+  attributes(tmp$call_dt_gmt)$tzone <- "GMT"
+  tmp
+})
+
+MABM_calls_raw <- do.call("rbind", fixed_tz) %>%
+    left_join(sunsets[c("site", "surv_date", "ss_dt_gmt")], by = c("site", "surv_date")) %>%
+    mutate(ss_call_t_diff = as.numeric(round(difftime(call_dt_gmt, ss_dt_gmt, units = c("mins")), 2))) %>%
+  select(site, year, surv_date, ss_dt_gmt, spp, spp_pulse_prop, spp_dprob, n_pulse, 
+         call_lat = lat, call_lon = lon, call_dt, ss_call_t_diff) %>%
+  arrange(site, call_dt)
+saveRDS(MABM_calls_raw, file = "./Output/MABM_calls_raw.rds")
+
+# Load species code/common name lookup table and store it...
+bat_spp_info <- readxl::read_excel("./Output/Raw_DB_output/MABM_spp_details.xlsx") %>%
+  select(spp = A_SP, spp_cn = CommonName)
+saveRDS(bat_spp_info, file = "./Output/bat_spp_info.rds")
+
+spp_filter_matrix <- read.csv("../Data/spp_filter_matrix.csv", stringsAsFactors = FALSE) %>%
+    select(site = Site_Name, everything(), -ID, -ORGNAME)
+saveRDS(spp_filter_matrix, file = "./Output/spp_filter_matrix.rds")
+
+# Create land cover based data set
+# This takes a while. Progress bar is shown...
+source("./R/extract_route_NLCD.R")
+
+# Get all relevant survey dates and sites for completing call data
+all_survs <- unique(MABM_survey_info[, c("site", "surv_date")])
+
+# Bat species of interest
+boi <- c("LABO", "EPFU", "NYHU", "PESU", "MYLU")
+
+expand.grid.df <- function(...) Reduce(function(...) merge(..., by=NULL), list(...))
+
+MABM_data <- lapply(boi, function(i) {
+    i_n <- as.name(i)
+    valid_sites <- spp_filter_matrix %>%
+        filter(UQ(i_n) == 1) %>% pull(site)
+    valid_survs <- filter(all_survs, site %in% valid_sites)
+
+    boi_calls <- MABM_calls_raw %>%
+        filter(spp == i) %>%
+        group_by(site, surv_date, spp) %>%
+        summarise(count = n())
+    
+    out <- expand.grid.df(valid_survs, spp = data.frame(spp = i)) %>%
+        left_join(boi_calls, c("site", "surv_date", "spp")) %>%
+        mutate(count = ifelse(is.na(count), 0, count),
+               year = year(surv_date)) %>%
+        arrange(site, surv_date)
+})
+names(MABM_data) <- boi
+saveRDS(MABM_data, file = "./Output/MABM_spp_counts.rds")
