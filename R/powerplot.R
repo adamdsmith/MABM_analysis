@@ -1,6 +1,7 @@
 powerplot <- function(sim_vals,
                       bat = c("LABO", "EPFU", "NYHU", "PESU", "MYLU"),
-                      alpha = 0.10) {
+                      alpha = 0.10,
+                      ref_line = 0.80) {
   if (!requireNamespace("ggplot2", quietly = TRUE))
     install.packages("ggplot2")
   binCI <- function(x, n) {
@@ -28,7 +29,7 @@ powerplot <- function(sim_vals,
                      
 
   p <- ggplot(simdf) +
-    geom_hline(yintercept = 0.8, lty = "dashed", color = "gray50", lwd = 1.5) +
+    geom_hline(yintercept = ref_line, lty = "dashed", color = "gray50", lwd = 1.5) +
     geom_pointrange(aes(x = annual_r, y = power, ymin = lci, ymax = uci, 
                         fill = survey_interval),
                     pch = 21,
