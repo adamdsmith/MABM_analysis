@@ -1,4 +1,8 @@
-library(simsalapar)
+if (!requireNamespace("pacman", quietly = TRUE))
+  install.packages("pacman")
+pacman::p_load(dplyr, ggplot2, purrr, tidyr, simsalapar)
+source("./R/powerplot.R")
+
 var_list <- varlist(
   n.sim = list(type = "N", expr = quote(N[sim]), value = 250),
   n_years = list(type = "grid", expr = quote(n[yrs]), value = c(10, 20)),
@@ -100,18 +104,24 @@ res <- doClusterApply(var_list, cluster = parallel::makeCluster(5L),
                       monitor = interactive())
 
 val <- getArray(res)
+# Check dimensions and names
 dim(val)
-names(dimnames(val))[1] <- "parm" # Give returned vector a name
+# Give returned vector a name
+names(dimnames(val))[1] <- "parm" 
+
+# Retrieve error, warning, and timing information
 err <- getArray(res, "error")
 warn <- getArray(res, "warning")
-time <- getArray(res, "time")
+time <- getArray(res, "time") # in milliseconds
 
 # Check for warnings/errors
-ftable(100 * err, col.vars = c("spp", "n_years", "n_sites"), row.vars = c("survey_interval"))
-ftable(100 * warn, col.vars = c("spp", "n_years", "n_sites"), row.vars = c("survey_interval"))
+ftable(err, col.vars = c("spp", "n_years", "n_sites"), row.vars = c("survey_interval"))
+ftable(warn, col.vars = c("spp", "n_years", "n_sites"), row.vars = c("survey_interval"))
+# Convert timing to minutes
 ftable(round(time/1000/60, 1), col.vars = c("n_years", "n_sites"), row.vars = c("spp", "survey_interval"))
 
-# Put confidence interval on power simulation
-x <- sum(object$pval < alpha, na.rm = TRUE)
-n <- nsims
-interval = binom.test(x, n) # power is bt$estimate; interval is bt$conf.int
+ggplot(filter(simdf, spp == "EPFU"), aes(x = yrs_sts_int, y = value)) +
+  geom_boxplot() +
+  facet_wrap(~ parm, scales = "free_y") + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))

@@ -33,8 +33,8 @@ powerplot <- function(sim_vals,
                         fill = survey_interval),
                     pch = 21,
                     position = position_dodge(width = 0.35)) +
-    viridis::scale_fill_viridis("Survey interval (yrs)", 
-                                begin = 0.2, end = 0.8, discrete = TRUE) +
+    scale_fill_manual("Survey interval (yrs)",
+                      values = c("#414487FF", "#7AD151FF")) +
     facet_grid(n_years ~ n_sites) +
     xlab("Annual rate of population change") +
     ylab(bquote(Power~"("*alpha~"="~.(alpha)*")")) +
