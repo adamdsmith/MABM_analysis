@@ -1,6 +1,6 @@
 library(simsalapar)
 var_list <- varlist(
-  n.sim = list(type = "N", expr = quote(N[sim]), value = 500),
+  n.sim = list(type = "N", expr = quote(N[sim]), value = 250),
   n_years = list(type = "grid", expr = quote(n[yrs]), value = c(10, 20)),
   survey_interval = list(type = "grid", expr = quote(n[yrs]), value = c(1, 2)), 
   n_sites = list(type = "grid", expr = quote(n[sites]),value = c(50, 100, 200)),
@@ -94,10 +94,13 @@ fit_sims <- function(n_sites, n_visits, n_years, annual_r, survey_interval, spp,
   parms[all_parms]
 }
 
-res <- doClusterApply(var_list, cluster = parallel::makeCluster(7L), sfile = "./Output/power_results.rds", doOne = fit_sims,
-                monitor = interactive())
+res <- doClusterApply(var_list, cluster = parallel::makeCluster(5L), 
+                      sfile = "./Output/power_results.rds", 
+                      doOne = fit_sims,
+                      monitor = interactive())
 
 val <- getArray(res)
+dim(val)
 names(dimnames(val))[1] <- "parm" # Give returned vector a name
 err <- getArray(res, "error")
 warn <- getArray(res, "warning")
