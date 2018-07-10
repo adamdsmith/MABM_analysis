@@ -98,9 +98,13 @@ fit_sims <- function(n_sites, n_visits, n_years, annual_r, survey_interval, spp,
   parms[all_parms]
 }
 
-res <- doClusterApply(var_list, cluster = parallel::makeCluster(5L), 
+# Set simulation seeds for reproducible results
+# seeds <- .Random.seed[seq(var_list$n.sim$value)]
+# saveRDS(seeds, file = "./Output/power_seeds.rds")
+seeds <- readRDS("./Output/power_seeds.rds")
+res <- doClusterApply(var_list, cluster = parallel::makeCluster(4L), 
                       sfile = "./Output/power_results.rds", 
-                      doOne = fit_sims,
+                      doOne = fit_sims, seed = seeds,
                       monitor = interactive())
 
 val <- getArray(res)
