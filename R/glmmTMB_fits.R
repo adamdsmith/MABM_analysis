@@ -3,7 +3,7 @@ if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes", qu
 if (!requireNamespace("nrsmisc", quietly = TRUE)) remotes::install_github("adamdsmith/nrsmisc")
 if (!requireNamespace("broom.mixed", quietly = TRUE)) remotes::install_github("bbolker/broom.mixed")
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", quiet = TRUE)
-pacman::p_load(dplyr, brms, glmmTMB, bbmle, broom, broom.mixed, ggplot2, DHARMa)
+pacman::p_load(dplyr, glmmTMB, bbmle, broom, broom.mixed, ggplot2, DHARMa)
 options(scipen = 10, mc.cores = 4)
 
 # -------------------------- Prepare data for analysis ----------------------------

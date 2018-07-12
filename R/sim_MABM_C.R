@@ -30,7 +30,7 @@ sim_MABM_C <- function(n_sites = 50,          # number of routes, assumed indepe
   # Variable indicating years from initial year
   year_cov <- rep(seq_len(n_years) - 1, each = n_visits)
 
-    # Filter data to years surveyed
+  # Filter data to years surveyed
   if (survey_interval > 1) {
     keep_yrs <- seq(1, n_years, by = survey_interval)
     year_cov <- year_cov[year_cov %in% (keep_yrs - 1)]
@@ -61,7 +61,7 @@ sim_MABM_C <- function(n_sites = 50,          # number of routes, assumed indepe
     site_cov_b * site_cov +             # Site-level covariate
     obs_cov_b * obs_cov +               # Observation-level covariate
     log(1 + delta_r) * year_cov +       # Annual rate of change           
-    site_r_eta * year_cov               # Random slope in annual rate of chanegmap
+    site_r_eta * year_cov               # Random slope in annual rate of change
   h <- rgamma(n = n_sites * n_yrs_surv, shape = theta, rate = theta)
   C_P <- rpois(n = n_sites * n_yrs_surv * n_visits, lambda = exp(log_lam))
   C_NB <- rpois(n = n_sites * n_yrs_surv * n_visits, lambda = h * exp(log_lam))
