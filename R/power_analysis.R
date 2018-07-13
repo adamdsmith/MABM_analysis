@@ -81,7 +81,7 @@ fit_sims <- function(n_sites, n_visits, n_years, annual_r, survey_interval, spp,
                 if (os) NULL else "site_cov_est",
                 if (oo) NULL else "obs_cov_est",
                 if (nb) "theta_est" else NULL,
-                "site_r_sd_est", "site_sd_est", "yr_sd_est")
+                "site_sd_est", "site_r_sd_est", "DISCARD", "yr_sd_est")
   parms <- m$sdr$par.fixed
   names(parms) <- parm_nms 
   sds <- sqrt(diag(m$sdr$cov.fixed)); names(sds) <- parm_nms
@@ -92,6 +92,8 @@ fit_sims <- function(n_sites, n_visits, n_years, annual_r, survey_interval, spp,
   parms[to_exp] <- exp(parms[to_exp])
   parms["ann_r_est"] <- parms["ann_r_est"] - 1
   parms["ann_r_p"] <- ann_r_p
+  # Hoops to get correlation among REs
+  parms["site_re_cor"] <- m$obj$env$report(m$fit$parfull)[["corr"]][[1]][2]
   if (os) parms["site_cov_est"] <- NA
   if (oo) parms["obs_cov_est"] <- NA
   # Reorder to standardize

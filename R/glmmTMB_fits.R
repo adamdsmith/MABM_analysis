@@ -5,6 +5,7 @@ if (!requireNamespace("broom.mixed", quietly = TRUE)) remotes::install_github("b
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", quiet = TRUE)
 pacman::p_load(dplyr, glmmTMB, bbmle, broom, broom.mixed, ggplot2, DHARMa)
 options(scipen = 10, mc.cores = 4)
+source("./R/utils.R")
 
 # -------------------------- Prepare data for analysis ----------------------------
 # These input files were created by make_route_analysis_data.R
@@ -53,17 +54,18 @@ spp_dat <- spp_dat %>%
          wk_jun1 = (doy - 152) / 7, # interpret as change in count per week since 1 June
          # offset; set so intercept interpretation is for mean route length
          l_len = log(len_mi/mean(site_data$len_mi)), 
-         year = year - 2012,
-         yf = factor(year))
+         year = year - 2012)
 
 # ------------------------ Set up some candidate models ---------------------------
+# Need different RE structure for MYLU due to data sparsity
+form <- count ~ year + wk_jun1 + wood_250 + urban_250 + offset(l_len) + (1|year) + (year|site)
+if (sp == "MYLU")
+  form <- update(form, . ~ . - (year|site) + (year - 1|site) + (1|site))
+
 # Using interpretable versions of variables
-m_pois <- glmmTMB(count ~ year + wk_jun1 + wood_250 + urban_250 + offset(l_len) + (1|site) + (1|yf) + (year-1|site), 
-                  data = spp_dat, family = poisson)
-m_nb1 <- glmmTMB(count ~ year + wk_jun1 + wood_250 + urban_250 + offset(l_len) + (1|site) + (1|yf) + (year-1|site), 
-                 data = spp_dat, family = nbinom1)
-m_nb2 <- glmmTMB(count ~ year + wk_jun1 + wood_250 + urban_250 + offset(l_len) + (1|site) + (1|yf) + (year-1|site), 
-                 data = spp_dat, family = nbinom2)
+m_pois <- glmmTMB(form, data = spp_dat, family = poisson)
+m_nb1 <- glmmTMB(form, data = spp_dat, family = nbinom1)
+m_nb2 <- glmmTMB(form, data = spp_dat, family = nbinom2)
 mods <- list(m_pois, m_nb1, m_nb2); names(mods) <- c("Poisson", "NB1", "NB2")
 print(aictab <- AICtab(mods, base = TRUE, weights = TRUE))
 saveRDS(mods, file = file.path("./Output/Models", paste0(sp, "_glmmTMB.rds")))
@@ -86,28 +88,32 @@ final_mod <- mods[[best_mod]]
 # Get estimated # detections for average length route at MABM-wide averages in start year (2012)
 nd <- expand.grid(year = 0, wk_jun1 = (avg_doy - 152) / 7, 
                   wood_250 = avg_wood / 0.1, urban_250 = avg_urban / 0.1, 
-                  yf = factor("0", levels = as.character(0:5)),
                   l_len = 0, site = "new")
 fit <- predict(final_mod, newdata = nd, allow.new.levels = TRUE, type = "link", se = TRUE)
 
 # Using scaled versions of variables
 final_mod_sc <- update(final_mod, . ~ . - wood_250 - urban_250 - wk_jun1 + doy_std + wood_std + urban_std)
-tidycoef <- tidy(final_mod) %>%
+fixed_coef <- tidy(final_mod) %>%
+  filter(effect == "fixed") %>%
   bind_rows(filter(tidy(final_mod_sc), grepl("doy_std|wood_std|urban_std", term))) %>%
   add_row(group = "NB", term = "theta", estimate = final_mod$sdr$par.fixed["betad"],
           std.error = sqrt(diag(final_mod$sdr$cov.fixed)["betad"])) %>%
   add_row(group = "fixed", term = "baseC", estimate = fit$fit,
-          std.error = fit$se.fit) %>%
+          std.error = fit$se.fit) 
+random_coef <- tidy(final_mod) %>%
+  filter(effect == "ran_pars") %>%
+  mutate(term = 
+           ifelse(grepl("\\(Intercept\\)$", term), paste("sd", group, "int", sep = "_"),
+                  ifelse(grepl("^cor_", term), paste("cor", group, "int", "slope", sep = "_"),
+                         paste("sd", sub("^.*_", "", term), "slope", sep = "_"))))
+all_coef <- bind_rows(fixed_coef, random_coef) %>%
   mutate(spp = sp, model = best_mod,
          lcl = estimate + qnorm(0.025) * std.error,
-         hcl = estimate + qnorm(0.975) * std.error,
-         term = ifelse(group == "site.1", "sd_site_int",
-                       ifelse(group == "site", "sd_year_slope",
-                              ifelse(group == "yf", "sd_year_int", term)))) %>%
+         hcl = estimate + qnorm(0.975) * std.error) %>%
   dplyr::select(spp, model, term, estimate, lcl, hcl) %>%
   filter(!grepl("Intercept", term))
 
-coefs <- bind_rows(coefs, tidycoef)
+coefs <- bind_rows(coefs, all_coef)
 
 }
 
@@ -123,3 +129,4 @@ p <- ggplot(coefs, aes(x = term, y = estimate, color = spp)) +
   theme_black() +
   theme(axis.text.y = element_text(hjust = 1))
 p
+ggsave("./Output/MABM_analysis.pdf", width = 6.5, height = 9)
