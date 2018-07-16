@@ -148,8 +148,3 @@ ftable(warn, col.vars = c("spp", "n_years", "n_sites"), row.vars = c("survey_int
 # Convert timing to minutes
 ftable(round(time/1000/60, 1), col.vars = c("n_years", "n_sites"), row.vars = c("spp", "survey_interval"))
 
-ggplot(filter(simdf, spp == "EPFU"), aes(x = yrs_sts_int, y = value)) +
-  geom_boxplot() +
-  facet_wrap(~ parm, scales = "free_y") + 
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
