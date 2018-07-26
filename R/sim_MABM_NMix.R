@@ -43,7 +43,6 @@ sim_MABM_NMix <- function(n_sites = 50,          # number of routes, assumed ind
   # Random intercept for each year
   yr_eta <- rnorm(n_yrs_surv, 0, sigma_yr)
   year_df <- data.frame(year = year_cov, yr_eta)
-  ###
 
   ### With years to be surveyed decided, create base data.frame
   dat <- expand.grid(visit = seq(n_visits),
@@ -61,12 +60,10 @@ sim_MABM_NMix <- function(n_sites = 50,          # number of routes, assumed ind
   
   site_df <- data.frame(site = seq(n_sites), site_cov,
                         site_eta = site_re[, 1], site_r_eta = site_re[, 2])
-  ###
 
   ### Observation-level (e.g., detection) effects
   # Make it appear as a sequential variable (e.g., day of year)
   obs_cov <- as.vector(replicate(n_sites * n_yrs_surv, sort(runif(n_visits))))
-  ###
 
   # Paste it all together, scale relevant variables, and calculate linear predictor
   # of for (latent) actual abundance...
@@ -81,7 +78,7 @@ sim_MABM_NMix <- function(n_sites = 50,          # number of routes, assumed ind
              site_r_eta * year)                  # Random slope in annual rate of change
   
   # Add relative abundances
-  h <- rgamma(n = n_sites * n_yrs_surv, shape = theta, rate = theta)
+  h <- rep(rgamma(n = n_sites * n_yrs_surv, shape = theta, rate = theta), each = n_visits)
   N_P <- rpois(n = n_sites * n_yrs_surv * n_visits, lambda = exp(dat$lp_N))
   N_NB <- rpois(n = n_sites * n_yrs_surv * n_visits, lambda = h * exp(dat$lp_N))
   if (!negbin) N <- N_P else N <- N_NB
