@@ -1,6 +1,13 @@
+# NLCD raster is too large to include in this directory
+# It can be downloaded here: https://www.sciencebase.gov/catalog/item/573cc51be4b0dae0d5e4b0c5
+# Modify the path to fit your needs...
 nlcd <- raster("../Geodata/NLCD_2011/nlcd_2011_landcover_2011_edition_2014_10_10.img")
-source("./R/compile_routes_sf.R")
-sites <- st_transform(sites, proj4string(nlcd))
+
+# Compile separate shapefiles of MABM routes, convert to NCLD projection, and save
+# source("./R/compile_routes_sf.R")
+# sites <- st_transform(sites, proj4string(nlcd))
+# saveRDS(sites, file = "./Output/compiled_routes.rds")
+sites <- readRDS("./Output/compiled_routes.rds")
 
 # Function to generate Gaussian smoothing kernel weights at different sigmas
 # Based on Chandler and Hepinstall-Cymermann (doi:10.1007/s10980-016-0380-z)
