@@ -8,7 +8,7 @@ options(scipen = 10, mc.cores = 4)
 source("./R/utils.R")
 
 # -------------------------- Prepare data for analysis ----------------------------
-# These input files were created by make_route_analysis_data.R
+# These input files were created by the code in MABM_analysis_overview.Rmd
 bats <- readRDS("./Output/MABM_spp_counts.rds")
 site_meta <- readRDS("./Output/MABM_routes.rds") %>%
   dplyr::select(site, len_mi:lon)
@@ -129,4 +129,5 @@ p <- ggplot(coefs, aes(x = term, y = estimate, color = spp)) +
   theme_black() +
   theme(axis.text.y = element_text(hjust = 1))
 p
+message("Coefficient plot saved at ./Output/MABM_analysis.pdf")
 ggsave("./Output/MABM_analysis.pdf", width = 6.5, height = 9)
