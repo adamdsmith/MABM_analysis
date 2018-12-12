@@ -1,3 +1,17 @@
+---
+title: "MABM Analysis and Power Analysis Overview"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+This file is meant to document the general process of preparing and analyzing the MABM data, as well as using the results of this analysis to conduct a power analysis exploring how survey design influences our ability to detect trends in bat populations using the MABM protocol.
+
+## Install and load necessary R packages
+
+```{r}
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
 if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
 if (!requireNamespace("nrsmisc", quietly = TRUE)) devtools::install_github("adamdsmith/nrsmisc")
@@ -9,12 +23,20 @@ invisible(sapply(other_packs, function(i) {
         install.packages(i, verbose = FALSE)
 }))
 options(stringsAsFactors = FALSE, scipen = 999)
+```
 
-# Export relevant tables from MABM Access database
+
+## Export relevant tables from MABM Access database
+
+```{r}
+# You may need to adjust the path to the MABM database
 MABMreportr:::setup_MABM_reports(MABM_access_db = "../Data/R4_MABM_database2.accdb",
                                  export_dir = normalizePath("./Output/Raw_DB_output"))
+```
 
-# Get list of participating routes (stations may host >1 route)
+## Create survey details
+
+```{r}
 MABM_routes <- readxl::read_excel("./Output/Raw_DB_output/MABM_routes.xlsx") %>%
   select(station = ORGNAME,
          site = Site_Name,
@@ -41,6 +63,7 @@ MABM_routes[grep("PtkNWR", MABM_routes$site), "timezone"] <- "America/Chicago"
 timez <- unique(MABM_routes$timezone)
 saveRDS(MABM_routes, file = "./Output/MABM_routes.rds")
 
+# MABM survey details
 MABM_survey_info <- readxl::read_excel("./Output/Raw_DB_output/MABM_survey_details.xlsx") %>%
   select(site = starts_with("Site Name"),
          surv_date = starts_with("Date Start"),
@@ -57,7 +80,11 @@ MABM_survey_info <- readxl::read_excel("./Output/Raw_DB_output/MABM_survey_detai
          notes = ifelse(is.na(notes), "", notes)) %>%
   select(site, surv_date, surv_dt_gmt, gps, complete, notes)
 attributes(MABM_survey_info$surv_dt_gmt)$tzone <- "GMT"    
+```
 
+## Get weather near sunset on day of survey
+
+```{r}
 ## Get sunset times to calculate time since set and associated weather data
 sunsets <- left_join(MABM_survey_info[, c("site", "surv_date")],
                      MABM_routes[, c("site", "timezone", "lat", "lon")],
@@ -80,8 +107,10 @@ wx <- sunsets %>%
   # Takes ~ 2 h
   do(get_sunset_wx(.$wx_stns, .$surv_date, .$ss_dt_gmt, .$lat, .$lon)) %>%
   ungroup()
+```
 
-## Combine with survey information
+## Combine weather and survey information
+```{r}
 MABM_survey_info <- MABM_survey_info %>%
   left_join(sunsets, by = c("site", "surv_date")) %>%
   select(-wx_stns) %>%
@@ -91,8 +120,12 @@ MABM_survey_info <- MABM_survey_info %>%
          year(surv_date) %in% 2012:2017) %>%
   mutate(doy = yday(surv_date))
 saveRDS(MABM_survey_info, file = "./Output/MABM_survey_info.rds")
+```
 
-# Get the call data...
+
+# Retrieve raw call data
+
+```{r}
 MABM_calls_raw <- readxl::read_excel("./Output/Raw_DB_output/MABM_calls_raw.xlsx") %>%
   select(site = Site_Name, lat = LAT, lon = LONG, FILENAME, spp = A_SP, A_Spper,
          A_Dprob, n_pulse = A_pulse, surv_date = contains("Date Start")) %>%
@@ -119,26 +152,39 @@ fixed_tz <- lapply(timez, function(t) {
 })
 
 MABM_calls_raw <- do.call("rbind", fixed_tz) %>%
-    left_join(sunsets[c("site", "surv_date", "ss_dt_gmt")], by = c("site", "surv_date")) %>%
-    mutate(ss_call_t_diff = as.numeric(round(difftime(call_dt_gmt, ss_dt_gmt, units = c("mins")), 2))) %>%
+  left_join(sunsets[c("site", "surv_date", "ss_dt_gmt")], by = c("site", "surv_date")) %>%
+  # Time of each call relative to sunset
+  mutate(ss_call_t_diff = as.numeric(round(difftime(call_dt_gmt, ss_dt_gmt, units = c("mins")), 2))) %>%
   select(site, year, surv_date, ss_dt_gmt, spp, spp_pulse_prop, spp_dprob, n_pulse, 
          call_lat = lat, call_lon = lon, call_dt, ss_call_t_diff) %>%
   arrange(site, call_dt)
 saveRDS(MABM_calls_raw, file = "./Output/MABM_calls_raw.rds")
+```
 
-# Load species code/common name lookup table and store it...
+## Species code/common name lookup table
+
+```{r}
 bat_spp_info <- readxl::read_excel("./Output/Raw_DB_output/MABM_spp_details.xlsx") %>%
   select(spp = A_SP, spp_cn = CommonName)
 saveRDS(bat_spp_info, file = "./Output/bat_spp_info.rds")
+```
 
+## Species filter matrix
+
+```{r}
 spp_filter_matrix <- read.csv("../Data/spp_filter_matrix.csv", stringsAsFactors = FALSE) %>%
     select(site = Site_Name, everything(), -ID, -ORGNAME)
 saveRDS(spp_filter_matrix, file = "./Output/spp_filter_matrix.rds")
+```
 
-# Create land cover based data set
+## Create land cover based data set
+```{r}
 # This takes a while. Progress bar is shown...
 source("./R/extract_route_NLCD.R")
+```
 
+## Generate data set of species counts by survey
+```{r}
 # Get all relevant survey dates and sites for completing call data
 all_survs <- unique(MABM_survey_info[, c("site", "surv_date")])
 
@@ -166,3 +212,28 @@ MABM_data <- lapply(boi, function(i) {
 })
 names(MABM_data) <- boi
 saveRDS(MABM_data, file = "./Output/MABM_spp_counts.rds")
+```
+
+## Fit generalized linear mixed models of species counts
+
+We fit relative abundance GLMMs for the five most-detected bat species, including:
+
+- Eastern red bat (*Lasiurus borealis*; LABO)
+- Big brown bat (*Eptesicus fuscus*; EPFU)
+- Evening bat (*Nycticeius humeralis*; NYHU)
+- Eastern pipistrelle (*Perimyotis subflavus*; PESU)
+- Little brown myotis (*Myotis lucifugus*; MYLU)
+
+The species-specific GLMMs were constructed with the following line of code. Look within `R/glmmTMB_fits.R` for details.
+
+```{r}
+source("./R/glmmTMB_fits.R")
+```
+
+## Power analysis
+
+Parameter estimates from the above species-specific GLMMs informed the power analysis defined and conducted in the following line of code. See `Output/power_analysis_setup.pdf` for a summary of the power analysis parameters. Look within `R/power_analysis.R` for details.
+
+```{r}
+source("./R/power_analysis.R")
+```
