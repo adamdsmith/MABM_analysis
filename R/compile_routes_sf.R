@@ -4,7 +4,7 @@ shps <- list.files("../Geodata/_MABM_canonical_routes",
 for (i in seq_along(shps)) {
     rte_nm <- gsub("_.*$","",basename(shps[i]))
     tmp <- st_read(shps[i], quiet = TRUE) %>%
-        select(geometry) %>%
+        dplyr::select(geometry) %>%
         dplyr::mutate(site = rte_nm) %>%
         group_by(site) %>%
         summarise()
