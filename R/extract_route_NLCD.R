@@ -1,7 +1,7 @@
-# NLCD raster is too large to include in this directory
-# It can be downloaded here: https://www.sciencebase.gov/catalog/item/573cc51be4b0dae0d5e4b0c5
+# 2016 NLCD raster is too large to include in this directory
+# It can be downloaded here: https://www.mrlc.gov/data/nlcd-2016-land-cover-conus 
 # Modify the path to fit your needs...
-nlcd <- raster("../Geodata/NLCD_2011/nlcd_2011_landcover_2011_edition_2014_10_10.img")
+nlcd <- raster("../Geodata/NLCD_2016/NLCD_2016_Land_Cover_L48_20190424.img")
 
 # Compile separate shapefiles of MABM routes, convert to NCLD projection, and save
 # source("./R/compile_routes_sf.R")
@@ -90,7 +90,7 @@ for (i in seq_len(n_sites)) {
     names(p_wet_wood) <- paste("wet_wood", c(1500, 250, 100), sep = "_")
     
     ## % forested
-    p_wood <- round(upl_wood + wet_wood, 3)
+    p_wood <- round(p_upl_wood + p_wet_wood, 3)
     names(p_wood) <- paste("wood", c(1500, 250, 100), sep = "_")
     
     ## % "open" water, includes emergent wetland

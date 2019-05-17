@@ -73,17 +73,17 @@ best_mod <- names(mods)[which.min(sapply(mods, AIC))]
 final_mod <- mods[[best_mod]]
 
 # Time for some diagnostics
-# sim_out <- simulateResiduals(final_mod)
-# plot(sim_out)
-# Sys.sleep(3)
-# plotResiduals(spp_dat$year, sim_out$scaledResiduals)
-# Sys.sleep(3)
-# plotResiduals(spp_dat$wk_jun1, sim_out$scaledResiduals)
-# Sys.sleep(3)
-# plotResiduals(spp_dat$wood_250, sim_out$scaledResiduals)
-# Sys.sleep(3)
-# plotResiduals(spp_dat$urban_250, sim_out$scaledResiduals)
-# Sys.sleep(3)
+sim_out <- simulateResiduals(final_mod)
+plot(sim_out)
+Sys.sleep(3)
+plotResiduals(spp_dat$year, sim_out$scaledResiduals)
+Sys.sleep(3)
+plotResiduals(spp_dat$wk_jun1, sim_out$scaledResiduals)
+Sys.sleep(3)
+plotResiduals(spp_dat$wood_250, sim_out$scaledResiduals)
+Sys.sleep(3)
+plotResiduals(spp_dat$urban_250, sim_out$scaledResiduals)
+Sys.sleep(3)
 
 # Get estimated # detections for average length route at MABM-wide averages in start year (2012)
 nd <- expand.grid(year = 0, wk_jun1 = (avg_doy - 152) / 7, 
