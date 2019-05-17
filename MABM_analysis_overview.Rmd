@@ -126,7 +126,7 @@ saveRDS(MABM_survey_info, file = "./Output/MABM_survey_info.rds")
 # Retrieve raw call data
 
 ```{r}
-MABM_calls_raw <- readxl::read_excel("./Output/Raw_DB_output/MABM_calls_raw.xlsx") %>%
+MABM_calls_raw <- readxl::read_excel("./Output/Raw_DB_output/MABM_calls.xlsx") %>%
   select(site = Site_Name, lat = LAT, lon = LONG, FILENAME, spp = A_SP, A_Spper,
          A_Dprob, n_pulse = A_pulse, surv_date = contains("Date Start")) %>%
   mutate(spp_pulse_prop = round(A_Spper, 1),
