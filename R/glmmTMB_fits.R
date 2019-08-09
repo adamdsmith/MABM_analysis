@@ -133,3 +133,41 @@ p <- ggplot(coefs, aes(x = term, y = estimate, color = spp)) +
 p
 message("Coefficient plot saved at ./Output/MABM_analysis.pdf")
 ggsave("./Output/MABM_analysis.pdf", width = 6.5, height = 9)
+
+# Create figure of standardized variables for 
+make_par_fig <- FALSE
+if (make_fig) {
+  GeomErrorbar$draw_key <-  function (data, params, size)     {
+    draw_key_vpath <- function (data, params, size) {
+      grid::segmentsGrob(0.5, 0.1, 0.5, 0.9, 
+                   gp = grid::gpar(col = alpha(data$colour, data$alpha), 
+                             lwd = data$size * .pt, lty = data$linetype, 
+                             lineend = "butt"), arrow = params$arrow)
+    }
+    grid::grobTree(draw_key_vpath(data, params, size), 
+             draw_key_point(transform(data, size = data$size), params))
+  }
+  coefs <- coefs %>%
+    mutate(term_label = factor(term,
+                               levels = c("year", "doy_std", "wood_std", "urban_std"),
+                               labels = c("Yearly trend\n(linear)", "Day of year\n(scaled)",
+                                          "Weighted forest cover\n(sigma = 250 m)\n(scaled)",
+                                          "Weighted urban cover\n(sigma = 250 m)\n(scaled)")
+                                       ))
+  p <- ggplot(filter(coefs, term %in% c("year", "doy_std", "wood_std", "urban_std")),
+              aes(x = term_label, y = estimate, color = spp)) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+    geom_point(position = position_dodge(width = 0.6), size = 3) +
+    geom_errorbar(aes(ymin = lcl, ymax = hcl), lwd = 1.5,
+                  position = position_dodge(0.6), width = 0) + 
+    scale_y_continuous("Parameter estimate (and 95% CI) on link scale",
+                       limits = c(-0.5, 1), minor_breaks = seq(-0.4, 0.9, by = 0.1)) +
+    labs(x = "Model parameter", y = "Parameter estimate (and 95% CI) on link scale",
+         color = NULL) + 
+    scale_color_viridis_d(end = 0.8) + 
+    theme_bw() +
+    theme(legend.position = "top")
+  p
+  ggsave("Output/MABM_scaled_parameter_estimates.png", width = 6.5, height = 4.5)
+  
+}
