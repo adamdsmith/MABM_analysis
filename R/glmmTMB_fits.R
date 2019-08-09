@@ -93,6 +93,8 @@ fit <- predict(final_mod, newdata = nd, allow.new.levels = TRUE, type = "link", 
 
 # Using scaled versions of variables
 final_mod_sc <- update(final_mod, . ~ . - wood_250 - urban_250 - wk_jun1 + doy_std + wood_std + urban_std)
+saveRDS(final_mod_sc, file = file.path("./Output/Models", paste0(sp, "_final_glmmTMB_scaled.rds")))
+
 fixed_coef <- tidy(final_mod) %>%
   filter(effect == "fixed") %>%
   bind_rows(filter(tidy(final_mod_sc), grepl("doy_std|wood_std|urban_std", term))) %>%
