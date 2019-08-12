@@ -80,4 +80,4 @@ ftable(round(time/1000/60, 1), col.vars = c("n_years", "n_sites"), row.vars = c(
 
 # Create graphs of power analysis and open it...
 source("./R/powerplot.R")
-powerplot(val, pdf = TRUE)
+powerplot(val, output = "pdf")

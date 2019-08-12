@@ -1,7 +1,10 @@
 powerplot <- function(sim_vals,
                       alpha = 0.10,
                       ref_line = 0.80,
-                      pdf = FALSE) {
+                      output = c("pdf", "png", "none")) {
+  output <- match.arg(output)
+  pdf <- identical(output, "pdf")
+  png <- identical(output, "png")
   if (!requireNamespace("ggplot2", quietly = TRUE))
     install.packages("ggplot2")
   binCI <- function(x, n) {
@@ -15,17 +18,24 @@ powerplot <- function(sim_vals,
     spread(parm, value) %>%
     filter(!is.na(ann_r_p)) %>%
     mutate(detected = ann_r_p <= alpha,
-           ann_r_est = ifelse(detected, ann_r_est, NA)) %>%
+           wrong_sign = ifelse(detected, ann_r_est > 0, FALSE),
+           ann_r_est_decline = ifelse(detected & !wrong_sign, ann_r_est, NA),
+           ann_r_est_increase = ifelse(detected & wrong_sign, ann_r_est, NA)) %>%
     group_by(spp, n_sites, n_years, survey_interval, n_visits, annual_r) %>%
     summarize(detections = sum(detected),
-                     n = n(),
-                     tmp = list(binCI(detections, n)),
-                     ann_r_est = mean(ann_r_est, na.rm = TRUE)) %>%
+              n = n(),
+              tmp = list(binCI(detections, n)),
+              ann_r_est_decline = mean(ann_r_est_decline, na.rm = TRUE),
+              ann_r_est_increase = mean(ann_r_est_increase, na.rm = TRUE),
+              wrong_sign = sum(wrong_sign) / detections) %>%
     mutate(power = map_dbl(tmp, 1),
            lci = map_dbl(tmp, 2),
            uci = map_dbl(tmp, 3)) %>%
     dplyr::select(-detections, -n, -tmp) %>%
-    ungroup()
+    ungroup() %>%
+    # Prettier organization for plots
+    mutate(spp_label = factor(spp, levels = c("EPFU", "LABO", "MYLU", "PESU/NYHU"),
+                        labels = c("EPFU\n", "LABO\n", "MYLU\n", "NYHU/\nPESU")))
                  
   rs <- levels(simdf$annual_r)
   
@@ -37,33 +47,43 @@ powerplot <- function(sim_vals,
                                        "Biennial (2 visits)", "Biennial (3 visits)")))
     pd <- position_dodge(width = 0.45)
     ggplot(rdat) +
-      geom_hline(yintercept = ref_line, lty = "dashed", color = "gray50", lwd = 1.5) +
-      geom_linerange(aes(x = spp, ymin = lci, ymax = uci, group = si_nv), position = pd) +
-      geom_point(aes(x = spp, y = power, fill = si_nv, shape = si_nv), position = pd) +
-      # geom_pointrange(aes(x = spp, y = power, ymin = lci, ymax = uci, 
-      #                     fill = interaction(n_visits, survey_interval)),
-      #                 pch = 21,
-      #                 position = pd)) +
+      geom_hline(yintercept = ref_line, lty = "dashed", color = "gray50", lwd = ifelse(pdf, 1.5, 1)) +
+      geom_linerange(aes(x = spp_label, ymin = lci, ymax = uci, group = si_nv), position = pd) +
+      geom_point(aes(x = spp_label, y = power, fill = si_nv, shape = si_nv), position = pd,
+                 size = ifelse(pdf, 2, 1.5)) +
       scale_fill_manual("Survey interval (# visits/yr)",
-                        values = c("#d8b365", "#8c510a", "#5ab4ac", "#01665e")) +
+                        values = viridis::viridis(4, end = 0.8)) +
       scale_shape_manual("Survey interval (# visits/yr)", values = c(22, 23, 22, 23)) +
       facet_grid(n_years ~ n_sites) +
       xlab("Species") +
       scale_y_continuous(bquote(Power~"("*alpha~"="~.(alpha)*")"),
                          limits = c(0, 1)) +
       ggtitle(paste0("MABM Power Analysis: ", pretty_r, "% annual change")) +
+      guides(fill = guide_legend(nrow = 2, title.position = "top", title.hjust = 0.5), 
+             shape = guide_legend(nrow = 2), title.position = "top", title.hjust = 0.5) +
       theme_bw() +
-      theme(legend.position = "top")
+      theme(legend.position = "top",
+            legend.key.width = unit(0.65, "lines"))
   })
 
   if (pdf) {
     tmp_fig <- tempfile(fileext = ".pdf")
     pdf(tmp_fig, width = 10, height = 7.5)
-  }
-  for (i in seq_along(plots)) print(plots[[i]])
-  if (pdf) {
+    for (i in seq_along(plots)) print(plots[[i]])
     invisible(dev.off())
     system(paste0('open "', normalizePath(tmp_fig), '"'))
-  }
+  } else if (png) {
+    if (!requireNamespace("cowplot", quietly = TRUE))
+      pacman::p_load("cowplot")
+    plots_png <- lapply(seq_along(plots), function(i) {
+      p <- plots[[i]] + ggtitle(NULL) 
+      if (i > 1) p <- p + theme(legend.position = "none")
+      if (i < 3) p <- p + theme(axis.text.x = element_blank(), axis.title.x=element_blank())
+      p
+    })
+    plot_grid(plotlist = plots_png, ncol = 1, rel_heights = c(1.18, 0.84, 1),
+              labels = "AUTO", label_y = c(0.715, 1, 1))
+    ggsave("Output/MABM_power_analysis.png", width = 6.5, height = 9)
+  } 
   arrange(simdf, n_sites, n_years, survey_interval)
 }
