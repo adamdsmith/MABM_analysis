@@ -135,7 +135,7 @@ p
 message("Coefficient plot saved at ./Output/MABM_analysis.pdf")
 ggsave("./Output/MABM_analysis.pdf", width = 6.5, height = 9)
 
-# Create figure of standardized variables for 
+# Create figure of standardized variables for manuscript
 make_par_fig <- FALSE
 if (make_fig) {
   # Rotate the error bar legend key to match figure
@@ -171,6 +171,21 @@ if (make_fig) {
   p
   ggsave("Output/MABM_scaled_parameter_estimates.png", width = 6.5, height = 4.5)
 }
+
+# Parameter estimate table
+resp_scale <- function(x) exp(x) - 1
+parms <- filter(coefs, term %in% c("year", "wk_jun1", "wood_250", "urban_250")) %>%
+  select(-term_label) %>%
+  mutate_if(is.numeric, resp_scale)
+tmp <- tempfile(fileext = ".Rmd")
+writeLines(c(c("---", "title: 'MABM parameter estimates'", 
+               "output: pdf_document", "tables: true", "---"),
+             kableExtra::kable(parms, "latex", booktabs = TRUE, digits = 3,
+                               linesep = c('', '', '', '\\addlinespace'))),
+             tmp)
+rmarkdown::render(tmp, 
+                  output_file = "~/FWS_Projects/MABM/Analysis/Output/MABM_parameter_estimates.pdf")
+message("Power analysis setup summarized in Output/power_analysis_setup.pdf")
 
 make_hab_fig <- FALSE
 if (make_hab_fig) {
