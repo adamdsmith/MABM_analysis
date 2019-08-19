@@ -78,6 +78,49 @@ ftable(warn, col.vars = c("spp", "n_years", "n_sites"), row.vars = c("survey_int
 # Convert timing to minutes
 ftable(round(time/1000/60, 1), col.vars = c("n_years", "n_sites"), row.vars = c("spp", "survey_interval"))
 
-# Create graphs of power analysis and open it...
+# Create figures of power analysis and open it...
 source("./R/powerplot.R")
 powerplot(val, output = "pdf")
+
+# Create figure of estimated population trend under various scenarios
+# fix example to 100 sites, 10 years, annual surveys x2
+trends <- simsalapar::array2df(sim_vals) %>%
+  filter(parm %in% c("ann_r_p", "ann_r_est")) %>%
+  spread(parm, value) %>%
+  filter(n_sites == "100",
+         n_years == "10",
+         survey_interval == "1",
+         n_visits == "2") %>%
+  mutate(detected = ann_r_p <= alpha,
+         wrong_sign = ifelse(detected, ann_r_est > 0, FALSE)) %>%
+  group_by(spp, annual_r, wrong_sign) %>%
+  mutate(prop_detected = sum(detected)/1000) %>%
+            # min_dec = min(ann_r_est_decline, na.rm = TRUE),
+            # max_dec = max(ann_r_est_decline, na.rm = TRUE),
+            # min_inc = min(ann_r_est_increase, na.rm = TRUE),
+            # max_inc = max(ann_r_est_increase, na.rm = TRUE)) %>%
+  ungroup() %>%
+  # Prettier organization for plots
+  mutate(spp_label = factor(spp, levels = c("EPFU", "LABO", "MYLU", "PESU/NYHU"),
+                            labels = c("EPFU\n", "LABO\n", "MYLU\n", "NYHU/\nPESU")),
+         act_decline = round(as.numeric(as.character(annual_r)), 3),
+         annual_r = factor(annual_r, labels = c("1.14% annual decline (25% over 25 years)",
+                                                "2.73% annual decline (50% over 25 years)",
+                                                "5% annual decline (~ 72% over 25 years)"))) %>%
+  filter(detected)
+    
+pd <- position_dodge(width = 0.45, preserve = "single")
+ggplot(trends, aes(spp_label, ann_r_est, color = wrong_sign, fill = prop_detected)) +
+  geom_hline(aes(yintercept = act_decline), lty = "dashed", color = "gray50", lwd = 1) +
+  geom_boxplot(position = pd) +
+  facet_wrap(~ annual_r, ncol = 1) +
+  scale_fill_viridis_c("Proportion of trends detected", end = 0.8) +
+  scale_color_manual(values = c("black", "black")) + 
+  xlab("Species") +
+  scale_y_continuous("Estimated annual population change") +
+  # ggtitle(paste0("MABM Power Analysis: ", pretty_r, "% annual change")) +
+  guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5, barwidth = unit(2, "inches")),
+         color = "none") +
+  theme_bw() +
+  theme(legend.position = "top")
+ggsave("Output/MABM_trend_detection.png", width = 6.5, height = 9)
