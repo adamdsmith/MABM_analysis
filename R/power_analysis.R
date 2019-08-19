@@ -87,7 +87,7 @@ powerplot(val, output = "pdf")
 trends <- simsalapar::array2df(sim_vals) %>%
   filter(parm %in% c("ann_r_p", "ann_r_est")) %>%
   spread(parm, value) %>%
-  filter(n_sites == "100",
+  filter(n_sites == "50",
          n_years == "10",
          survey_interval == "1",
          n_visits == "2") %>%
