@@ -36,89 +36,109 @@ boi <- c("LABO", "EPFU", "NYHU", "PESU", "MYLU")
 # Set up data.frame to catch coefficients
 coefs <- data.frame()
 
+# Set up list to catch AIC tables
+aictabs <- vector(mode = "list", length = length(boi))
+names(aictabs) <- boi
+
 for (sp in boi) {
-message(sp, " at the plate...")
-# ------------------------ Some exploratory data analysis -------------------------
-spp_dat <- bats[[sp]]
-nrsmisc::pairs_plus(spp_dat[, 4:ncol(spp_dat)])
-
-# ---------------------------- Some tweaks for analysis ---------------------------
-spp_dat <- spp_dat %>%
-  mutate(site = as.factor(site),
-         # Created scale versions for covariate effect magnitude evaluation
-         wood_std = as.numeric(scale(wood_250)),
-         urban_std = as.numeric(scale(urban_250)),
-         doy_std = as.numeric(scale(doy)),
-         wood_250 = wood_250 / 0.1, # interpret as change in count per 10% increase
-         urban_250 = urban_250 / 0.1, # ditto
-         wk_jun1 = (doy - 152) / 7, # interpret as change in count per week since 1 June
-         # offset; set so intercept interpretation is for mean route length
-         l_len = log(len_mi/mean(site_data$len_mi)), 
-         year = year - 2012)
-
-# ------------------------ Set up some candidate models ---------------------------
-# Need different RE structure for MYLU due to data sparsity
-form <- count ~ year + wk_jun1 + wood_250 + urban_250 + offset(l_len) + (1|year) + (year|site)
-if (sp == "MYLU")
-  form <- update(form, . ~ . - (year|site) + (year - 1|site) + (1|site))
-
-# Using interpretable versions of variables
-m_pois <- glmmTMB(form, data = spp_dat, family = poisson)
-m_nb1 <- glmmTMB(form, data = spp_dat, family = nbinom1)
-m_nb2 <- glmmTMB(form, data = spp_dat, family = nbinom2)
-mods <- list(m_pois, m_nb1, m_nb2); names(mods) <- c("Poisson", "NB1", "NB2")
-print(aictab <- AICtab(mods, base = TRUE, weights = TRUE))
-saveRDS(mods, file = file.path("./Output/Models", paste0(sp, "_glmmTMB.rds")))
-best_mod <- names(mods)[which.min(sapply(mods, AIC))]
-final_mod <- mods[[best_mod]]
-
-# Time for some diagnostics
-sim_out <- simulateResiduals(final_mod)
-plot(sim_out)
-Sys.sleep(3)
-plotResiduals(spp_dat$year, sim_out$scaledResiduals)
-Sys.sleep(3)
-plotResiduals(spp_dat$wk_jun1, sim_out$scaledResiduals)
-Sys.sleep(3)
-plotResiduals(spp_dat$wood_250, sim_out$scaledResiduals)
-Sys.sleep(3)
-plotResiduals(spp_dat$urban_250, sim_out$scaledResiduals)
-Sys.sleep(3)
-
-# Get estimated # detections for average length route at MABM-wide averages in start year (2012)
-nd <- expand.grid(year = 0, wk_jun1 = (avg_doy - 152) / 7, 
-                  wood_250 = avg_wood / 0.1, urban_250 = avg_urban / 0.1, 
-                  l_len = 0, site = "new")
-fit <- predict(final_mod, newdata = nd, allow.new.levels = TRUE, type = "link", se = TRUE)
-
-# Using scaled versions of variables
-final_mod_sc <- update(final_mod, . ~ . - wood_250 - urban_250 - wk_jun1 + doy_std + wood_std + urban_std)
-saveRDS(final_mod, file = file.path("./Output/Models", paste0(sp, "_final_glmmTMB.rds")))
-saveRDS(final_mod_sc, file = file.path("./Output/Models", paste0(sp, "_final_glmmTMB_scaled.rds")))
-
-fixed_coef <- tidy(final_mod) %>%
-  filter(effect == "fixed") %>%
-  bind_rows(filter(tidy(final_mod_sc), grepl("doy_std|wood_std|urban_std", term))) %>%
-  add_row(group = "NB", term = "theta", estimate = final_mod$sdr$par.fixed["betad"],
-          std.error = sqrt(diag(final_mod$sdr$cov.fixed)["betad"])) %>%
-  add_row(group = "fixed", term = "baseC", estimate = fit$fit,
-          std.error = fit$se.fit) 
-random_coef <- tidy(final_mod) %>%
-  filter(effect == "ran_pars") %>%
-  mutate(term = 
-           ifelse(grepl("\\(Intercept\\)$", term), paste("sd", group, "int", sep = "_"),
-                  ifelse(grepl("^cor_", term), paste("cor", group, "int", "slope", sep = "_"),
-                         paste("sd", sub("^.*_", "", term), "slope", sep = "_"))))
-all_coef <- bind_rows(fixed_coef, random_coef) %>%
-  mutate(spp = sp, model = best_mod,
-         lcl = estimate + qnorm(0.025) * std.error,
-         hcl = estimate + qnorm(0.975) * std.error) %>%
-  dplyr::select(spp, model, term, estimate, lcl, hcl) %>%
-  filter(!grepl("Intercept", term))
-
-coefs <- bind_rows(coefs, all_coef)
-
+  message(sp, " at the plate...")
+  # ------------------------ Some exploratory data analysis -------------------------
+  spp_dat <- bats[[sp]]
+  nrsmisc::pairs_plus(spp_dat[, 4:ncol(spp_dat)])
+  
+  # ---------------------------- Some tweaks for analysis ---------------------------
+  spp_dat <- spp_dat %>%
+    mutate(site = as.factor(site),
+           # Created scale versions for covariate effect magnitude evaluation
+           wood_std = as.numeric(scale(wood_250)),
+           urban_std = as.numeric(scale(urban_250)),
+           doy_std = as.numeric(scale(doy)),
+           wood_250 = wood_250 / 0.1, # interpret as change in count per 10% increase
+           urban_250 = urban_250 / 0.1, # ditto
+           wk_jun1 = (doy - 152) / 7, # interpret as change in count per week since 1 June
+           # offset; set so intercept interpretation is for mean route length
+           l_len = log(len_mi/mean(site_data$len_mi)), 
+           year = year - 2012)
+  
+  # ------------------------ Set up some candidate models ---------------------------
+  # Need different RE structure for MYLU due to data sparsity
+  form <- count ~ year + wk_jun1 + wood_250 + urban_250 + offset(l_len) + (1|year) + (year|site)
+  if (sp == "MYLU")
+    form <- update(form, . ~ . - (year|site) + (year - 1|site) + (1|site))
+  
+  # Using interpretable versions of variables
+  m_pois <- glmmTMB(form, data = spp_dat, family = poisson)
+  m_nb1 <- glmmTMB(form, data = spp_dat, family = nbinom1)
+  m_nb2 <- glmmTMB(form, data = spp_dat, family = nbinom2)
+  mods <- list(m_pois, m_nb1, m_nb2); names(mods) <- c("Poisson", "NB1", "NB2")
+  print(aictabs[[sp]] <- AICtab(mods, base = TRUE, weights = TRUE, logLik = TRUE))
+  saveRDS(mods, file = file.path("./Output/Models", paste0(sp, "_glmmTMB.rds")))
+  best_mod <- names(mods)[which.min(sapply(mods, AIC))]
+  final_mod <- mods[[best_mod]]
+  
+  # Time for some diagnostics
+  sim_out <- simulateResiduals(final_mod)
+  plot(sim_out)
+  Sys.sleep(3)
+  plotResiduals(spp_dat$year, sim_out$scaledResiduals)
+  Sys.sleep(3)
+  plotResiduals(spp_dat$wk_jun1, sim_out$scaledResiduals)
+  Sys.sleep(3)
+  plotResiduals(spp_dat$wood_250, sim_out$scaledResiduals)
+  Sys.sleep(3)
+  plotResiduals(spp_dat$urban_250, sim_out$scaledResiduals)
+  Sys.sleep(3)
+  
+  # Get estimated # detections for average length route at MABM-wide averages in start year (2012)
+  nd <- expand.grid(year = 0, wk_jun1 = (avg_doy - 152) / 7, 
+                    wood_250 = avg_wood / 0.1, urban_250 = avg_urban / 0.1, 
+                    l_len = 0, site = "new")
+  fit <- predict(final_mod, newdata = nd, allow.new.levels = TRUE, type = "link", se = TRUE)
+  
+  # Using scaled versions of variables
+  final_mod_sc <- update(final_mod, . ~ . - wood_250 - urban_250 - wk_jun1 + doy_std + wood_std + urban_std)
+  saveRDS(final_mod, file = file.path("./Output/Models", paste0(sp, "_final_glmmTMB.rds")))
+  saveRDS(final_mod_sc, file = file.path("./Output/Models", paste0(sp, "_final_glmmTMB_scaled.rds")))
+  
+  fixed_coef <- tidy(final_mod) %>%
+    filter(effect == "fixed") %>%
+    bind_rows(filter(tidy(final_mod_sc), grepl("doy_std|wood_std|urban_std", term))) %>%
+    add_row(group = "NB", term = "theta", estimate = final_mod$sdr$par.fixed["betad"],
+            std.error = sqrt(diag(final_mod$sdr$cov.fixed)["betad"])) %>%
+    add_row(group = "fixed", term = "baseC", estimate = fit$fit,
+            std.error = fit$se.fit) 
+  random_coef <- tidy(final_mod) %>%
+    filter(effect == "ran_pars") %>%
+    mutate(term = 
+             ifelse(grepl("\\(Intercept\\)$", term), paste("sd", group, "int", sep = "_"),
+                    ifelse(grepl("^cor_", term), paste("cor", group, "int", "slope", sep = "_"),
+                           paste("sd", sub("^.*_", "", term), "slope", sep = "_"))))
+  all_coef <- bind_rows(fixed_coef, random_coef) %>%
+    mutate(spp = sp, model = best_mod,
+           lcl = estimate + qnorm(0.025) * std.error,
+           hcl = estimate + qnorm(0.975) * std.error) %>%
+    dplyr::select(spp, model, term, estimate, lcl, hcl) %>%
+    filter(!grepl("Intercept", term))
+  
+  coefs <- bind_rows(coefs, all_coef)
 }
+
+# AIC table
+aictabs <- lapply(aictabs, function(i) {
+  class(i) <- "data.frame"
+  i$model <- rownames(i)
+  i
+})
+aictabs <- bind_rows(aictabs, .id = "Species") %>%
+  mutate_if(is.numeric, round, digits = 3)
+tmp <- tempfile(fileext = ".Rmd")
+writeLines(c(c("---", "title: 'MABM analyis AIC model comparison'", 
+               "output: pdf_document", "tables: true", "---"),
+             kableExtra::kable(aictabs, "latex", booktabs = TRUE, digits = 3,
+                               linesep = c('', '', '\\addlinespace'))),
+           tmp)
+rmarkdown::render(tmp, 
+                  output_file = "~/FWS_Projects/MABM/Analysis/Output/MABM_analysis_AIC_tables.pdf")
 
 p <- ggplot(coefs, aes(x = term, y = estimate, color = spp)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
