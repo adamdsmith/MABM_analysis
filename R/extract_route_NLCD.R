@@ -115,8 +115,8 @@ MABM_site_env_data <- MABM_site_env_data %>%
     mutate_at(vars(wood_1500:urban_100), as.numeric)
 saveRDS(MABM_site_env_data, file = "./Output/MABM_site_env_data.rds")
 
-make_fig <- FALSE
-if (make_fig) {
+make_hab_fig <- FALSE
+if (make_hab_fig) {
     pacman::p_load(ggplot2, tidyr)
     # tmp <- select(MABM_site_env_data, upl_dec_1500:urban_100) %>%
     #     gather() %>%
@@ -150,5 +150,77 @@ if (make_fig) {
                                      "Gaussian kernel (250 m standard deviation)")) +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
     ggsave("Output/NLCD_route_coverage.png", width = 6.5, height = 4.5)
-        
 }
+
+make_route_fig <- FALSE
+if (make_route_fig) {
+    pacman::p_load(ggplot2, cowplot)
+    rte <- sites[31, ]
+    rte_name <- rte$site
+    rte_b <- st_buffer(rte, dist = 750)
+    
+    # Distance to route grid
+    rte_nlcd <- crop(nlcd, as(rte_b, "Spatial"))
+    rte_g <- rasterize(as(rte, "Spatial"), rte_nlcd) 
+    rte_dist <- distance(rte_g)
+    
+    rte_250 <- rte_dist
+    rte_250[rte_dist[] > 750] <- NA
+    rte_250[] <- gauss_kern_w(rte_250[], 250)
+    
+    rte_nlcd_df <- as.data.frame(rte_nlcd, xy = TRUE) %>%
+        dplyr::rename(nlcd = NLCD_2016_Land_Cover_L48_20190424) %>%
+        mutate(
+            habitat = case_when(
+                nlcd == 41           ~ "upl_dec",
+                nlcd == 42           ~ "upl_con",
+                nlcd == 43           ~ "upl_mix",
+                nlcd == 90           ~ "wet_wood",
+                nlcd %in% c(11, 95)  ~ "water",
+                nlcd %in% 21:24      ~ "urban",
+                TRUE                 ~ NA_character_),
+            habitat = factor(habitat, exclude = NULL,
+                             levels = c("upl_dec", "upl_con", "upl_mix", "wet_wood", "water", "urban", NA_character_),
+                             labels = c("Upland deciduous forest", "Upland coniferous forest", 
+                                        "Upland mixed forest", "Wooded wetland", 
+                                        "Open water", "Developed (urban)", "Other habitats")),
+            is_wood = grepl("forest|wooded", habitat))
+        
+    rte_p <- ggplot() +
+        coord_sf(crs = st_crs(rte)) +
+        geom_raster(data = rte_nlcd_df,
+                    aes(x = x, y = y, fill = habitat)) + 
+        geom_sf(data = rte, color = "black", lwd = 1.5, inherit.aes = FALSE) +
+        scale_fill_manual("Habitat type", values = c(viridis::viridis(6, end = 0.8), NA)) +
+        labs(x = NULL, y = NULL) + 
+        theme_bw() +
+        theme(legend.key = element_rect(color = "black"))
+    
+    rte_wood_p <- ggplot() +
+        coord_sf(crs = st_crs(rte)) +
+        geom_raster(data = filter(rte_nlcd_df, is_wood),
+                    aes(x = x, y = y, fill = is_wood)) + 
+        geom_sf(data = rte, color = "black", lwd = 1.5, inherit.aes = FALSE) +
+        scale_fill_manual("Wooded habitat?", values = "#384B7D") +
+        labs(x = NULL, y = NULL) + 
+        theme_bw() +
+        theme(legend.key = element_rect(color = "black"))
+    
+    rte_250_df <- as.data.frame(rte_250, xy = TRUE) %>%
+        filter(!is.na(layer)) %>%
+        mutate(layer = layer/max(layer))
+    rte_gauss <- ggplot() +
+        coord_sf(crs = st_crs(rte)) +
+        geom_raster(data = filter(rte_nlcd_df, is_wood),
+                    aes(x = x, y = y), fill = "#384B7D") + 
+        geom_raster(data = rte_250_df,
+                    aes(x = x, y = y, fill = layer)) + 
+        geom_sf(data = rte, color = "black", lwd = 1.5, inherit.aes = FALSE) +
+        scale_fill_viridis_c("Relative habitat\nweight", end = 0.8) +
+        labs(x = NULL, y = NULL) + 
+        theme_bw() +
+        theme(legend.key = element_rect(color = "black"))
+    
+    out <- plot_grid(rte_p, rte_wood_p, rte_gauss, align = "v", axis = "l", ncol = 1, labels = "AUTO")
+    ggsave(out, file = "Output/nlcd_calculation.png", dpi = 600, width = 6, height = 15)
+    
