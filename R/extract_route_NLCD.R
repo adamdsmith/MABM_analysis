@@ -118,20 +118,37 @@ saveRDS(MABM_site_env_data, file = "./Output/MABM_site_env_data.rds")
 make_fig <- FALSE
 if (make_fig) {
     pacman::p_load(ggplot2, tidyr)
+    # tmp <- select(MABM_site_env_data, upl_dec_1500:urban_100) %>%
+    #     gather() %>%
+    #     mutate(value = value * 100,
+    #            habitat = gsub("_\\d+$", "", key),
+    #            sd = regmatches(key, regexpr("\\d+$", key))) %>%
+    #     mutate(sd = factor(sd, levels = c(100, 250, 1500)),
+    #            habitat = factor(habitat, 
+    #                             levels = c("upl_dec", "upl_con", "upl_mix", "wet_wood", "water", "urban"),
+    #                             labels = c("Upland deciduous forest", "Upland coniferous forest", 
+    #                                        "Upland mixed forest", "Wooded wetland", 
+    #                                        "Open water", "Developed (urban)")))
+    # ggplot(tmp, aes(sd, value)) + geom_boxplot() + facet_wrap(~ habitat, nrow = 2) +
+    #     theme_bw() + labs(x = "Gaussian kernel standard deviation around route (m)",
+    #                       y = "Weighted % coverage from 2016 National Land Cover Data")
     tmp <- select(MABM_site_env_data, upl_dec_1500:urban_100) %>%
         gather() %>%
         mutate(value = value * 100,
                habitat = gsub("_\\d+$", "", key),
                sd = regmatches(key, regexpr("\\d+$", key))) %>%
-        mutate(sd = factor(sd, levels = c(100, 250, 1500)),
-               habitat = factor(habitat, 
+        filter(sd == "250") %>%
+        mutate(habitat = factor(habitat, 
                                 levels = c("upl_dec", "upl_con", "upl_mix", "wet_wood", "water", "urban"),
                                 labels = c("Upland deciduous forest", "Upland coniferous forest", 
                                            "Upland mixed forest", "Wooded wetland", 
                                            "Open water", "Developed (urban)")))
-    ggplot(tmp, aes(sd, value)) + geom_boxplot() + facet_wrap(~ habitat, nrow = 2) +
-        theme_bw() + labs(x = "Gaussian kernel standard deviation around route (m)",
-                          y = "Weighted % coverage from 2016 National Land Cover Data")
+    ggplot(tmp, aes(habitat, value)) + geom_boxplot() +
+        theme_bw() + labs(x = "Habitat type",
+                          y = paste0("Weighted % coverage from\n", 
+                                     "2016 National Land Cover Data using\n",
+                                     "Gaussian kernel (250 m standard deviation)")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
     ggsave("Output/NLCD_route_coverage.png", width = 6.5, height = 4.5)
         
 }
