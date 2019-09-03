@@ -231,15 +231,15 @@ if (make_hab_fig) {
       # Vary day of year first
       expand.grid(year = 0, wk_jun1 = (150:210 - 152) / 7, 
                   wood_250 = avg_wood / 0.1, urban_250 = avg_urban / 0.1,
-                  l_len = 0, site = "new", var = "doy", stringsAsFactors = FALSE),
+                  l_len = 0, site = "new", var = "wk_jun1", stringsAsFactors = FALSE),
       # Then wooded cover
       expand.grid(year = 0, wk_jun1 = (avg_doy - 152) / 7, 
                   wood_250 = seq(0.1, 0.9, by = 0.01) / 0.1, urban_250 = avg_urban / 0.1,
-                  l_len = 0, site = "new", var = "wood", stringsAsFactors = FALSE),
+                  l_len = 0, site = "new", var = "wood_250", stringsAsFactors = FALSE),
       # Then urban cover
       expand.grid(year = 0, wk_jun1 = (avg_doy - 152) / 7, 
                   wood_250 = avg_wood / 0.1, urban_250 = seq(0, 0.15, by = 0.005) / 0.1,
-                  l_len = 0, site = "new", var = "urban", stringsAsFactors = FALSE)) %>%
+                  l_len = 0, site = "new", var = "urban_250", stringsAsFactors = FALSE)) %>%
       mutate(doy = wk_jun1 * 7 + 152,
              wood_250_orig = wood_250 / 10,
              urban_250_orig = urban_250 / 10)
@@ -256,38 +256,38 @@ if (make_hab_fig) {
     group_by(spp, var) %>% 
     summarise(min = min(lcl), max = max(hcl)) %>% 
     tidyr::gather(metric, value, -spp, -var) %>%
-    mutate(doy = avg_doy - 1 + as.Date("2012-01-01"), 
-           wood = avg_wood, 
-           urban = avg_urban)
-  p_doy <- ggplot(filter(get_fits, var == "doy"),
+    mutate(wk_jun1 = avg_doy - 1 + as.Date("2012-01-01"), 
+           wood_250 = avg_wood, 
+           urban_250 = avg_urban)
+  p_doy <- ggplot(filter(get_fits, var == "wk_jun1"),
                   aes(x = doy - 1 + as.Date("2012-01-01"), y = fit)) + 
     geom_ribbon(aes(ymin = lcl, ymax = hcl), fill = "grey70") +
     geom_line() +
-    geom_blank(data = dummy, aes(doy, value)) + 
+    geom_blank(data = dummy, aes(wk_jun1, value)) + 
     facet_grid(spp ~ ., scales = "free") + 
     theme_bw() + 
     theme(strip.background = element_blank(),
           strip.text = element_blank()) +
-    labs(x = "Date\n", y = "Expected number of detections\non average route in 2012")
-  p_wood <- ggplot(filter(get_fits, var == "wood"),
+    labs(x = "Survey date", y = "Expected number of detections")
+  p_wood <- ggplot(filter(get_fits, var == "wood_250"),
                   aes(x = wood_250_orig * 100, y = fit)) + 
     geom_ribbon(aes(ymin = lcl, ymax = hcl), fill = "grey70") +
     geom_line() +
-    geom_blank(data = dummy, aes(wood * 100, value)) + 
+    geom_blank(data = dummy, aes(wood_250 * 100, value)) + 
     facet_grid(spp ~ ., scales = "free") + 
     theme_bw() + 
     theme(strip.background = element_blank(),
           strip.text = element_blank()) +
-    labs(x = "Weighted % forest cover\n(sigma = 250 m)", y = NULL)
-  p_urban <- ggplot(filter(get_fits, var == "urban"),
+    labs(x = "Weighted % forest cover", y = NULL)
+  p_urban <- ggplot(filter(get_fits, var == "urban_250"),
                    aes(x = urban_250_orig * 100, y = fit)) + 
     geom_ribbon(aes(ymin = lcl, ymax = hcl), fill = "grey70") +
     geom_line() +
-    geom_blank(data = dummy, aes(urban * 100, value)) + 
+    geom_blank(data = dummy, aes(urban_250 * 100, value)) + 
     facet_grid(spp ~ ., scales = "free") + 
     theme_bw() + 
-    labs(x = "Weighted % urban cover\n(sigma = 250 m)", y = NULL)
-  plot_grid(p_doy, p_wood, p_urban, nrow = 1, rel_widths = c(1.13, 1, 1.1),
+    labs(x = "Weighted % urban cover", y = NULL)
+  plot_grid(p_doy, p_wood, p_urban, nrow = 1, rel_widths = c(1.07, 1.00, 1.09),
             labels = "AUTO", label_x = c(0.24, 0.14, 0.13), label_y = 0.99)
   ggsave("Output/MABM_habitat_associations.png", width = 8.5, height = 5.5, dpi = 300)
   
