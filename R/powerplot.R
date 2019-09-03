@@ -59,8 +59,8 @@ powerplot <- function(sim_vals,
       scale_y_continuous(bquote(Power~"("*alpha~"="~.(alpha)*")"),
                          limits = c(0, 1)) +
       ggtitle(paste0("MABM Power Analysis: ", pretty_r, "% annual change")) +
-      guides(fill = guide_legend(nrow = 2, title.position = "top", title.hjust = 0.5), 
-             shape = guide_legend(nrow = 2), title.position = "top", title.hjust = 0.5) +
+      guides(fill = guide_legend(nrow = 1, title.position = "top", title.hjust = 0.5), 
+             shape = guide_legend(nrow = 1), title.position = "top", title.hjust = 0.5) +
       theme_bw() +
       theme(legend.position = "top",
             legend.key.width = unit(0.65, "lines"))
