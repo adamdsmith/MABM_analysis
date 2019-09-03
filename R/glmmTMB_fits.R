@@ -122,6 +122,7 @@ for (sp in boi) {
   
   coefs <- bind_rows(coefs, all_coef)
 }
+saveRDS(coefs, file = "Output/MABM_GLMM_coefficients.rds")
 
 # AIC table
 aictabs <- lapply(aictabs, function(i) {
@@ -157,7 +158,7 @@ ggsave("./Output/MABM_analysis.pdf", width = 6.5, height = 9)
 
 # Create figure of standardized variables for manuscript
 make_par_fig <- FALSE
-if (make_fig) {
+if (make_par_fig) {
   # Rotate the error bar legend key to match figure
   GeomErrorbar$draw_key <-  function (data, params, size)     {
     draw_key_vpath <- function (data, params, size) {
@@ -170,23 +171,30 @@ if (make_fig) {
              draw_key_point(transform(data, size = data$size), params))
   }
   coefs <- coefs %>%
-    mutate(term_label = factor(term,
-                               levels = c("year", "doy_std", "wood_std", "urban_std"),
-                               labels = c("Yearly trend\n(linear)", "Day of year\n(scaled)",
-                                          "Weighted forest cover\n(sigma = 250 m)\n(scaled)",
-                                          "Weighted urban cover\n(sigma = 250 m)\n(scaled)")
-                                       ))
-  p <- ggplot(filter(coefs, term %in% c("year", "doy_std", "wood_std", "urban_std")),
-              aes(x = term_label, y = estimate, color = spp)) +
-    geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+    mutate(term_label = 
+             factor(term,
+                    levels = c("year", "wk_jun1", "doy_std", "wood_250", "wood_std", 
+                               "urban_250", "urban_std"),
+                    labels = c("Annual trend\n(linear)", 
+                               "Survey date\n(weeks since 1 June)",
+                               "Survey day of year\n(scaled)",
+                               "Weighted forest cover\n(per 10% cover increment)",
+                               "Weighted forest cover\n(sigma = 250 m)\n(scaled)",
+                               "Weighted urban cover\n(per 10% cover increment)",
+                               "Weighted urban cover\n(sigma = 250 m)\n(scaled)")))
+
+  p <- ggplot(filter(coefs, term %in% c("year", "wk_jun1", "wood_250", "urban_250")),
+              aes(x = spp, y = 100 * (exp(estimate) - 1))) +
+    geom_hline(yintercept = 0, linetype = "dashed", lwd = 1, color = "gray50") +
     geom_point(position = position_dodge(width = 0.6), size = 3) +
-    geom_errorbar(aes(ymin = lcl, ymax = hcl), lwd = 1.5,
-                  position = position_dodge(0.6), width = 0) + 
-    scale_y_continuous("Parameter estimate (and 95% CI) on link scale",
-                       limits = c(-0.5, 1), minor_breaks = seq(-0.4, 0.9, by = 0.1)) +
-    labs(x = "Model parameter", y = "Parameter estimate (and 95% CI) on link scale",
-         color = NULL) + 
-    scale_color_viridis_d(end = 0.8) + 
+    geom_errorbar(aes(ymin = 100 * (exp(lcl) - 1), 
+                      ymax = 100 * (exp(hcl) - 1)), lwd = 1.5, width = 0) + 
+    facet_wrap(~ term_label, nrow = 2, ncol = 2, scales = "free_y") +
+    scale_y_continuous("Percent change (and 95% CI) in bat relative abundance") +
+                       # limits = c(0, NA), minor_breaks = seq(-0.4, 0.9, by = 0.1)) +
+    labs(x = "Species", color = NULL) + 
+    
+    # scale_color_viridis_d(end = 0.8) + 
     theme_bw() + theme(legend.position = "top")
   p
   ggsave("Output/MABM_scaled_parameter_estimates.png", width = 6.5, height = 4.5)
@@ -196,16 +204,18 @@ if (make_fig) {
 resp_scale <- function(x) exp(x) - 1
 parms <- filter(coefs, term %in% c("year", "wk_jun1", "wood_250", "urban_250")) %>%
   select(-term_label) %>%
-  mutate_if(is.numeric, resp_scale)
+  mutate_if(is.numeric, resp_scale) %>%
+  left_join(tibble(spp = c("EPFU", "LABO", "MYLU", "NYHU", "PESU")), .)
+names(parms) <- c("Species", "Count model", "Parameter", "Estimate", "LCL", "UCL")
 tmp <- tempfile(fileext = ".Rmd")
-writeLines(c(c("---", "title: 'MABM parameter estimates'", 
+writeLines(c(c("---", "title: 'MABM parameter estimates (response scale)'", 
                "output: pdf_document", "tables: true", "---"),
              kableExtra::kable(parms, "latex", booktabs = TRUE, digits = 3,
                                linesep = c('', '', '', '\\addlinespace'))),
              tmp)
 rmarkdown::render(tmp, 
                   output_file = "~/FWS_Projects/MABM/Analysis/Output/MABM_parameter_estimates.pdf")
-message("Power analysis setup summarized in Output/power_analysis_setup.pdf")
+message("Power analysis setup summarized in Output/MABM_parameter_estimates.pdf")
 
 make_hab_fig <- FALSE
 if (make_hab_fig) {
