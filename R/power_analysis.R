@@ -84,14 +84,14 @@ powerplot(val, output = "pdf")
 
 # Create figure of estimated population trend under various scenarios
 # fix example to 100 sites, 10 years, annual surveys x2
-trends <- simsalapar::array2df(sim_vals) %>%
+trends <- simsalapar::array2df(val) %>%
   filter(parm %in% c("ann_r_p", "ann_r_est")) %>%
   spread(parm, value) %>%
   filter(n_sites == "50",
          n_years == "10",
          survey_interval == "1",
          n_visits == "2") %>%
-  mutate(detected = ann_r_p <= alpha,
+  mutate(detected = ann_r_p <= 0.1,
          wrong_sign = ifelse(detected, ann_r_est > 0, FALSE)) %>%
   group_by(spp, annual_r, wrong_sign) %>%
   mutate(prop_detected = sum(detected)/1000) %>%
@@ -106,7 +106,8 @@ trends <- simsalapar::array2df(sim_vals) %>%
          act_decline = round(as.numeric(as.character(annual_r)), 3),
          annual_r = factor(annual_r, labels = c("1.14% annual decline (25% over 25 years)",
                                                 "2.73% annual decline (50% over 25 years)",
-                                                "5% annual decline (~ 72% over 25 years)"))) %>%
+                                                "5% annual decline (~ 72% over 25 years)")),
+         bias = ann_r_est / act_decline) %>%
   filter(detected)
     
 pd <- position_dodge(width = 0.45, preserve = "single")
@@ -123,4 +124,4 @@ ggplot(trends, aes(spp_label, ann_r_est, color = wrong_sign, fill = prop_detecte
          color = "none") +
   theme_bw() +
   theme(legend.position = "top")
-ggsave("Output/MABM_trend_detection.png", width = 6.5, height = 9)
+ggsave("Output/MABM_trend_detection.png", width = 6.5, height = 6.5)
