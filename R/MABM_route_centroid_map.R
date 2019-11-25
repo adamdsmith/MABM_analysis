@@ -21,11 +21,20 @@ routes <- readxl::read_excel("./Output/Raw_DB_output/MABM_routes.xlsx") %>%
 routes_sf <- st_as_sf(routes, coords = c("lon", "lat"), crs = 4326) %>%
   st_transform(3857)
 
-sa <- st_bbox(c(xmin = -100, xmax = -75, ymax = 41, ymin = 24), crs = st_crs(4326))
-sa3857 <- st_as_sfc(sa) %>% st_transform(3857)
+sa_bb_vec <- c(xmin = -100, xmax = -75, ymax = 41, ymin = 24)
+sa_bb <- st_bbox(sa_bb_vec, crs = st_crs(4326))
+sa3857 <- st_as_sfc(sa_bb) %>% st_transform(3857)
 
-bm <- get_map(location = unname(sa), source = "stamen",
-              zoom = 6, maptype = "terrain-background")
+# bm <- get_stamenmap(bbox = unname(sa_bb_vec[c(1,4,2,3)]), 
+#               zoom = 6, color = "bw", maptype = "terrain-background",
+#               force = TRUE)
+
+# CartoDB Positron retrieval (likely unstable)
+source("R/get_positron_MABM.R")
+bm <- get_positron_MABM(bbox = c(left = unname(sa_bb_vec[1]),
+                                 bottom = unname(sa_bb_vec[4]),
+                                 right = unname(sa_bb_vec[2]),
+                                 top = unname(sa_bb_vec[3])))
 
 # overwrite the bbox of the ggmap object with that from transformed study area
 attr(bm, "bb")$ll.lat <- st_bbox(sa3857)["ymin"]
@@ -35,7 +44,7 @@ attr(bm, "bb")$ur.lon <- st_bbox(sa3857)["xmax"]
 
 p <- ggmap(bm) +
   geom_sf(data = usa, lwd = 1, fill = NA, color = "black", inherit.aes = FALSE) +
-  geom_sf(data = routes_sf, size = 1, 
+  geom_sf(data = routes_sf, size = 2, 
           pch = 21, fill = "red", inherit.aes = FALSE) +
   coord_sf(crs = st_crs(3857),
            xlim = st_bbox(sa3857)[c(1,3)], ylim = st_bbox(sa3857)[c(2,4)]) +
@@ -62,7 +71,7 @@ p +
     # ymin = st_bbox(sa3857)["ymin"],
     ymax = st_bbox(sa3857)["ymin"] + abs(diff(c(st_bbox(sa3857)["ymin"], st_bbox(sa3857)["ymax"])))/3)
 
-ggsave("Output/MABM_route_centroids.png", dpi = 600, width = 6.5, height = 4.5)
+ggsave("Output/MABM_route_centroids_bw.png", dpi = 600, width = 6.5, height = 4.5)
 
 ggplot(routes) +
   ggspatial::annotation_map_tile(zoom = 5) +
