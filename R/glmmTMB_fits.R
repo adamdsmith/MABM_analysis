@@ -157,7 +157,7 @@ message("Coefficient plot saved at ./Output/MABM_analysis.pdf")
 ggsave("./Output/MABM_analysis.pdf", width = 6.5, height = 9)
 
 # Create figure of standardized variables for manuscript
-make_par_fig <- FALSE
+make_par_fig <- TRUE
 if (make_par_fig) {
   # Rotate the error bar legend key to match figure
   GeomErrorbar$draw_key <-  function (data, params, size)     {
@@ -188,7 +188,7 @@ if (make_par_fig) {
     geom_hline(yintercept = 0, linetype = "dashed", lwd = 1, color = "gray50") +
     geom_point(position = position_dodge(width = 0.6), size = 3) +
     geom_errorbar(aes(ymin = 100 * (exp(lcl) - 1), 
-                      ymax = 100 * (exp(hcl) - 1)), lwd = 1.5, width = 0) + 
+                      ymax = 100 * (exp(hcl) - 1)), lwd = 1, width = 0) + 
     facet_wrap(~ term_label, nrow = 2, ncol = 2, scales = "free_y") +
     scale_y_continuous("Percent change (and 95% CI) in bat relative abundance") +
                        # limits = c(0, NA), minor_breaks = seq(-0.4, 0.9, by = 0.1)) +
