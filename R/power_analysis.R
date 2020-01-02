@@ -115,7 +115,7 @@ ggplot(trends, aes(spp_label, ann_r_est, color = wrong_sign, fill = prop_detecte
   geom_hline(aes(yintercept = act_decline), lty = "dashed", color = "gray50", lwd = 1) +
   geom_boxplot(position = pd) +
   facet_wrap(~ annual_r, ncol = 1) +
-  scale_fill_viridis_c("Proportion of trends detected", end = 0.8) +
+  scale_fill_viridis_c("Proportion of trends detected") +
   scale_color_manual(values = c("black", "black")) + 
   xlab("Species") +
   scale_y_continuous("Estimated annual population change") +
@@ -124,4 +124,4 @@ ggplot(trends, aes(spp_label, ann_r_est, color = wrong_sign, fill = prop_detecte
          color = "none") +
   theme_bw() +
   theme(legend.position = "top")
-ggsave("Output/MABM_trend_detection.png", width = 6.5, height = 6.5)
+ggsave("Output/MABM_trend_detection.png", dpi = 600, width = 6.5, height = 6.5)
