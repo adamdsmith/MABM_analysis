@@ -157,7 +157,13 @@ MABM_calls_raw <- do.call("rbind", fixed_tz) %>%
   mutate(ss_call_t_diff = as.numeric(round(difftime(call_dt_gmt, ss_dt_gmt, units = c("mins")), 2))) %>%
   select(site, year, surv_date, ss_dt_gmt, spp, spp_pulse_prop, spp_dprob, n_pulse, 
          call_lat = lat, call_lon = lon, call_dt, ss_call_t_diff) %>%
-  arrange(site, call_dt)
+  arrange(site, call_dt) %>%
+  # Fix LANO ids to UNKN as species filter was not applied in one case
+  mutate(spp = ifelse(spp == "LANO", "UNKN", spp))
+
+# Now filter detections to those surveys used in analysis
+MABM_calls_raw <- MABM_calls_raw %>%
+  semi_join(MABM_survey_info, by = c("site", "surv_date"))
 saveRDS(MABM_calls_raw, file = "./Output/MABM_calls_raw.rds")
 ```
 
