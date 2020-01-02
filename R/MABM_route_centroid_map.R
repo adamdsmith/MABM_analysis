@@ -45,7 +45,7 @@ attr(bm, "bb")$ur.lon <- st_bbox(sa3857)["xmax"]
 p <- ggmap(bm) +
   geom_sf(data = usa, lwd = 1, fill = NA, color = "black", inherit.aes = FALSE) +
   geom_sf(data = routes_sf, size = 2, 
-          pch = 21, fill = "red", inherit.aes = FALSE) +
+          pch = 21, fill = "gray60", inherit.aes = FALSE) +
   coord_sf(crs = st_crs(3857),
            xlim = st_bbox(sa3857)[c(1,3)], ylim = st_bbox(sa3857)[c(2,4)]) +
   labs(x = NULL, y = NULL) +
@@ -72,9 +72,3 @@ p +
     ymax = st_bbox(sa3857)["ymin"] + abs(diff(c(st_bbox(sa3857)["ymin"], st_bbox(sa3857)["ymax"])))/3)
 
 ggsave("Output/MABM_route_centroids_bw.png", dpi = 600, width = 6.5, height = 4.5)
-
-ggplot(routes) +
-  ggspatial::annotation_map_tile(zoom = 5) +
-  geom_sf(inherit.aes = FALSE) +
-  coord_sf(datum = NA) +
-  theme_minimal()
