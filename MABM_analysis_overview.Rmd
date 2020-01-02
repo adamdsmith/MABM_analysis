@@ -53,10 +53,10 @@ MABM_routes <- readxl::read_excel("./Output/Raw_DB_output/MABM_routes.xlsx") %>%
 # Get timezone of each station
 options(geonamesHost = "api.geonames.org")
 options(geonamesUsername = "adam_d_smith")
-timez <- rep("", nrow(MABM_routes))
-for (i in seq_along(timez)) {
-  timez[i] <- as.character(geonames::GNtimezone(MABM_routes$lat[i], MABM_routes$lon[i])$timezoneId)
-}
+timez <- character(nrow(MABM_routes))
+timez <- pbapply::pbsapply(seq_len(nrow(MABM_routes)), function(i) {
+    timez[i] <- as.character(geonames::GNtimezone(MABM_routes$lat[i], MABM_routes$lon[i])$timezoneId)
+})
 MABM_routes$timezone <- timez
 # Set timezone for Patoka River Lake manually as they operate on Central time
 MABM_routes[grep("PtkNWR", MABM_routes$site), "timezone"] <- "America/Chicago"
