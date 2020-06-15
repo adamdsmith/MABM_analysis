@@ -35,12 +35,12 @@ powerplot <- function(sim_vals,
     ungroup() %>%
     # Prettier organization for plots
     mutate(spp_label = factor(spp, levels = c("EPFU", "LABO", "MYLU", "PESU/NYHU"),
-                        labels = c("EPFU\n", "LABO\n", "MYLU\n", "NYHU/\nPESU")))
+                        labels = c("EPFU\n", "LABO/\nLASE", "MYLU\n", "NYHU/\nPESU")))
                  
   rs <- levels(simdf$annual_r)
   
   plots <- lapply(rs, function(r) {
-    pretty_r <- round(as.numeric(r) * 100, 3)
+    pretty_r <- round(as.numeric(r) * 100, 2)
     rdat <- filter(simdf, annual_r == r) %>%
       mutate(si_nv = factor(paste(survey_interval, n_visits, sep = ":"),
                             labels = c("Annual (2 visits)", "Annual (3 visits)",
@@ -58,7 +58,7 @@ powerplot <- function(sim_vals,
       xlab("Species") +
       scale_y_continuous(bquote(Power~"("*alpha~"="~.(alpha)*")"),
                          limits = c(0, 1)) +
-      ggtitle(paste0("MABM Power Analysis: ", pretty_r, "% annual change")) +
+      ggtitle(paste0(pretty_r, "% annual change")) +
       guides(fill = guide_legend(nrow = 1, title.position = "top", title.hjust = 0.5), 
              shape = guide_legend(nrow = 1), title.position = "top", title.hjust = 0.5) +
       theme_bw() +
@@ -75,15 +75,16 @@ powerplot <- function(sim_vals,
   } else if (png) {
     if (!requireNamespace("cowplot", quietly = TRUE))
       pacman::p_load("cowplot")
+    legend <- cowplot::get_legend(plots[[1]])
     plots_png <- lapply(seq_along(plots), function(i) {
-      p <- plots[[i]] + ggtitle(NULL) 
-      if (i > 1) p <- p + theme(legend.position = "none")
+      p <- plots[[i]] + theme(legend.position = "none")
       if (i < 3) p <- p + theme(axis.text.x = element_blank(), axis.title.x=element_blank())
       p
     })
-    plot_grid(plotlist = plots_png, ncol = 1, rel_heights = c(1.18, 0.84, 1),
-              labels = "AUTO", label_y = c(0.715, 1, 1))
-    ggsave("Output/MABM_power_analysis.png", width = 6.5, height = 9)
+    plots_png <- c(list(legend), plots_png)
+    cowplot::plot_grid(plotlist = plots_png, ncol = 1, rel_heights = c(0.2, 0.84, 0.84, 1),
+              labels = c("", LETTERS[1:3])) #label_y = c(1, 115, 1, 1))
+    ggsave("Output/Fig3_MABM_power_analysis.png", width = 6.5, height = 9)
   } 
   arrange(simdf, n_sites, n_years, survey_interval)
 }

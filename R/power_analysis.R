@@ -81,7 +81,7 @@ ftable(round(time/1000/60, 1), col.vars = c("n_years", "n_sites"), row.vars = c(
 # Create figures of power analysis and open it...
 source("./R/powerplot.R")
 powerplot(val, output = "pdf")
-
+powerplot(val, output = "png")
 # Create figure of estimated population trend under various scenarios
 # fix example to 100 sites, 10 years, annual surveys x2
 trends <- simsalapar::array2df(val) %>%
@@ -102,7 +102,7 @@ trends <- simsalapar::array2df(val) %>%
   ungroup() %>%
   # Prettier organization for plots
   mutate(spp_label = factor(spp, levels = c("EPFU", "LABO", "MYLU", "PESU/NYHU"),
-                            labels = c("EPFU\n", "LABO\n", "MYLU\n", "NYHU/\nPESU")),
+                            labels = c("EPFU\n", "LABO/\nLASE", "MYLU\n", "NYHU/\nPESU")),
          act_decline = round(as.numeric(as.character(annual_r)), 3),
          annual_r = factor(annual_r, labels = c("1.14% annual decline (25% over 25 years)",
                                                 "2.73% annual decline (50% over 25 years)",
@@ -124,4 +124,4 @@ ggplot(trends, aes(spp_label, ann_r_est, color = wrong_sign, fill = prop_detecte
          color = "none") +
   theme_bw() +
   theme(legend.position = "top")
-ggsave("Output/MABM_trend_detection.png", dpi = 600, width = 6.5, height = 6.5)
+ggsave("Output/Fig4_MABM_trend_detection.png", dpi = 600, width = 6.5, height = 6.5)

@@ -171,7 +171,9 @@ if (make_par_fig) {
              draw_key_point(transform(data, size = data$size), params))
   }
   coefs <- coefs %>%
-    mutate(term_label = 
+    mutate(
+      spp = gsub("LABO", "LABO/\nLASE", spp),
+      term_label = 
              factor(term,
                     levels = c("year", "wk_jun1", "doy_std", "wood_250", "wood_std", 
                                "urban_250", "urban_std"),
@@ -197,7 +199,7 @@ if (make_par_fig) {
     # scale_color_viridis_d(end = 0.8) + 
     theme_bw() + theme(legend.position = "top")
   p
-  ggsave("Output/MABM_scaled_parameter_estimates.png", width = 6.5, height = 4.5)
+  ggsave("Output/Fig2_MABM_scaled_parameter_estimates.png", width = 6.5, height = 4.5)
 }
 
 # Parameter estimate table
