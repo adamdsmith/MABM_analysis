@@ -210,14 +210,14 @@ parms <- filter(coefs, term %in% c("year", "wk_jun1", "wood_250", "urban_250")) 
   left_join(tibble(spp = c("EPFU", "LABO", "MYLU", "NYHU", "PESU")), .)
 names(parms) <- c("Species", "Count model", "Parameter", "Estimate", "LCL", "UCL")
 tmp <- tempfile(fileext = ".Rmd")
-writeLines(c(c("---", "title: 'MABM parameter estimates (response scale)'", 
+writeLines(c(c("---", "title: 'MABM parameter estimates (linear predictor scale)'", 
                "output: pdf_document", "tables: true", "---"),
              kableExtra::kable(parms, "latex", booktabs = TRUE, digits = 3,
                                linesep = c('', '', '', '\\addlinespace'))),
              tmp)
 rmarkdown::render(tmp, 
                   output_file = "~/FWS_Projects/MABM/Analysis/Output/MABM_parameter_estimates.pdf")
-message("Power analysis setup summarized in Output/MABM_parameter_estimates.pdf")
+message("Coefficients summarized in Output/MABM_parameter_estimates.pdf")
 
 make_hab_fig <- FALSE
 if (make_hab_fig) {
