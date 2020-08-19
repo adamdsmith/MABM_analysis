@@ -35,7 +35,8 @@ powerplot <- function(sim_vals,
     ungroup() %>%
     # Prettier organization for plots
     mutate(spp_label = factor(spp, levels = c("EPFU", "LABO", "MYLU", "PESU/NYHU"),
-                        labels = c("EPFU\n", "LABO/\nLASE", "MYLU\n", "NYHU/\nPESU")))
+                              labels = c("EPFU", "LABO/LASE", "MYLU", "NYHU/PESU")),
+           n_years = factor(n_years, labels = c("10 years\nof surveys", "20 years\nof surveys")))
                  
   rs <- levels(simdf$annual_r)
   
@@ -48,14 +49,14 @@ powerplot <- function(sim_vals,
     pd <- position_dodge(width = 0.45)
     ggplot(rdat) +
       geom_hline(yintercept = ref_line, lty = "dashed", color = "gray50", lwd = ifelse(pdf, 1.5, 1)) +
-      geom_linerange(aes(x = spp_label, ymin = lci, ymax = uci, group = si_nv), position = pd) +
-      geom_point(aes(x = spp_label, y = power, fill = si_nv, shape = si_nv), position = pd,
+      geom_linerange(aes(x = n_sites, ymin = lci, ymax = uci, group = si_nv), position = pd) +
+      geom_point(aes(x = n_sites, y = power, fill = si_nv, shape = si_nv), position = pd,
                  size = ifelse(pdf, 2, 1.5)) +
       scale_fill_manual("Survey interval (# visits/yr)",
                         values = viridis::viridis(4, end = 0.8)) +
       scale_shape_manual("Survey interval (# visits/yr)", values = c(22, 23, 22, 23)) +
-      facet_grid(n_years ~ n_sites) +
-      xlab("Species") +
+      facet_grid(n_years ~ spp_label) +
+      xlab("# sites surveyed") +
       scale_y_continuous(bquote(Power~"("*alpha~"="~.(alpha)*")"),
                          limits = c(0, 1)) +
       ggtitle(paste0(pretty_r, "% annual change")) +
