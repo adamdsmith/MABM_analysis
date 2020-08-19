@@ -5,8 +5,8 @@ var_list <- varlist(
   n.sim = list(type = "N", expr = quote(N[sim]), value = 1000),
   n_years = list(type = "grid", expr = quote(n[yrs]), value = c(10, 20)),
   survey_interval = list(type = "grid", expr = quote(si[yrs]), value = c(1, 2)), 
-  n_sites = list(type = "grid", expr = quote(n[sites]),value = c(50, 100, 200)),
-  n_visits = list(type = "grid", expr = quote(n[visits]),value = c(2, 3)),
+  n_sites = list(type = "grid", expr = quote(n[sites]), value = c(50, 100, 200)),
+  n_visits = list(type = "grid", expr = quote(n[visits]), value = c(2, 3)),
   # 25% and 50% declines in 25 years, resp, plus 'catastrophic' 5% annual decline
   annual_r = list(type = "grid", expr = quote(r[ann]), value = c(-0.011441, -0.027345, -0.05)),  
   spp = list(type = "grid", value = c("LABO", "PESU/NYHU", "EPFU", "MYLU")),
