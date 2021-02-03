@@ -67,25 +67,23 @@ powerplot <- function(sim_vals,
             legend.key.width = unit(0.65, "lines"))
   })
 
+  if (!requireNamespace("cowplot", quietly = TRUE))
+    pacman::p_load("cowplot")
+  legend <- cowplot::get_legend(plots[[1]])
+  plots_png <- lapply(seq_along(plots), function(i) {
+    p <- plots[[i]] + theme(legend.position = "none")
+    if (i < 3) p <- p + theme(axis.text.x = element_blank(), axis.title.x=element_blank())
+    p
+  })
+  plots_png <- c(list(legend), plots_png)
+  cowplot::plot_grid(plotlist = plots_png, ncol = 1, rel_heights = c(0.2, 0.84, 0.84, 1),
+                     labels = c("", LETTERS[1:3])) #label_y = c(1, 115, 1, 1))
+  
   if (pdf) {
-    tmp_fig <- tempfile(fileext = ".pdf")
-    pdf(tmp_fig, width = 10, height = 7.5)
-    for (i in seq_along(plots)) print(plots[[i]])
-    invisible(dev.off())
-    system(paste0('open "', normalizePath(tmp_fig), '"'))
+    ggsave("Output/FIG3.pdf", width = 190, height = 240, units = "mm")
+    system(paste0('open "', normalizePath("Output/FIG3.pdf"), '"'))
   } else if (png) {
-    if (!requireNamespace("cowplot", quietly = TRUE))
-      pacman::p_load("cowplot")
-    legend <- cowplot::get_legend(plots[[1]])
-    plots_png <- lapply(seq_along(plots), function(i) {
-      p <- plots[[i]] + theme(legend.position = "none")
-      if (i < 3) p <- p + theme(axis.text.x = element_blank(), axis.title.x=element_blank())
-      p
-    })
-    plots_png <- c(list(legend), plots_png)
-    cowplot::plot_grid(plotlist = plots_png, ncol = 1, rel_heights = c(0.2, 0.84, 0.84, 1),
-              labels = c("", LETTERS[1:3])) #label_y = c(1, 115, 1, 1))
-    ggsave("Output/Fig3_MABM_power_analysis.png", width = 6.5, height = 9)
+    ggsave("Output/FIG3.png", width = 6.5, height = 9)
   } 
   arrange(simdf, n_sites, n_years, survey_interval)
 }

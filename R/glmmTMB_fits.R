@@ -197,9 +197,9 @@ if (make_par_fig) {
     labs(x = "Species", color = NULL) + 
     
     # scale_color_viridis_d(end = 0.8) + 
-    theme_bw() + theme(legend.position = "top")
+    theme_bw(base_size = 10) + theme(legend.position = "top")
   p
-  ggsave("Output/Fig2_MABM_scaled_parameter_estimates.png", width = 6.5, height = 4.5)
+  ggsave("Output/FIG2.pdf", width = 190, height = 125, units = "mm")
 }
 
 # Parameter estimate table

@@ -71,4 +71,4 @@ p +
     # ymin = st_bbox(sa3857)["ymin"],
     ymax = st_bbox(sa3857)["ymin"] + abs(diff(c(st_bbox(sa3857)["ymin"], st_bbox(sa3857)["ymax"])))/3)
 
-ggsave("Output/MABM_route_centroids_bw.png", dpi = 600, width = 6.5, height = 4.5)
+ggsave("Output/FIG1.pdf", width = 180, height = 140, units = "mm")

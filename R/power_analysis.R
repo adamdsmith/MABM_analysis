@@ -124,4 +124,4 @@ ggplot(trends, aes(spp_label, ann_r_est, color = wrong_sign, fill = prop_detecte
          color = "none") +
   theme_bw() +
   theme(legend.position = "top")
-ggsave("Output/Fig4_MABM_trend_detection.png", dpi = 600, width = 6.5, height = 6.5)
+ggsave("Output/FIG4.pdf", width = 112.5, height = 175, units = "mm")
