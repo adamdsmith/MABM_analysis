@@ -200,6 +200,7 @@ if (make_par_fig) {
     theme_bw(base_size = 10) + theme(legend.position = "top")
   p
   ggsave("Output/FIG2.pdf", width = 190, height = 125, units = "mm")
+  ggsave("Output/FIG2.jpeg", width = 190, height = 125, units = "mm", dpi = 300)
 }
 
 # Parameter estimate table

@@ -72,3 +72,4 @@ p +
     ymax = st_bbox(sa3857)["ymin"] + abs(diff(c(st_bbox(sa3857)["ymin"], st_bbox(sa3857)["ymax"])))/3)
 
 ggsave("Output/FIG1.pdf", width = 180, height = 140, units = "mm")
+ggsave("Output/FIG1.jpeg", width = 180, height = 140, units = "mm", dpi = 300)

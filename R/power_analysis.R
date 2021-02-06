@@ -115,13 +115,18 @@ ggplot(trends, aes(spp_label, ann_r_est, color = wrong_sign, fill = prop_detecte
   geom_hline(aes(yintercept = act_decline), lty = "dashed", color = "gray50", lwd = 1) +
   geom_boxplot(position = pd) +
   facet_wrap(~ annual_r, ncol = 1) +
-  scale_fill_viridis_c("Proportion of trends detected") +
+  scale_fill_viridis_c("Proportion of trends detected", breaks = seq(0, 0.7, by = 0.1),
+                       limits = c(0, 0.7), expand = c(0, 0)) +
   scale_color_manual(values = c("black", "black")) + 
   xlab("Species") +
   scale_y_continuous("Estimated annual population change") +
   # ggtitle(paste0("MABM Power Analysis: ", pretty_r, "% annual change")) +
-  guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5, barwidth = unit(2, "inches")),
+  guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5, nbin = 100,
+                               barwidth = unit(2, "inches"), barheight = unit(0.1, "inches"),
+                               ticks.colour = "black", ticks.linewidth = 1),
          color = "none") +
   theme_bw() +
-  theme(legend.position = "top")
+  theme(legend.position = "top",
+        legend.margin = margin(t = 0, r = 0, b = 0, l = 0))
 ggsave("Output/FIG4.pdf", width = 112.5, height = 175, units = "mm")
+ggsave("Output/FIG4.jpeg", width = 112.5, height = 175, units = "mm", dpi = 300)

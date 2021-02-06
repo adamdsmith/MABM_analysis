@@ -81,6 +81,7 @@ powerplot <- function(sim_vals,
   
   if (pdf) {
     ggsave("Output/FIG3.pdf", width = 190, height = 240, units = "mm")
+    ggsave("Output/FIG3.jpeg", width = 190, height = 240, units = "mm", dpi = 300)
     system(paste0('open "', normalizePath("Output/FIG3.pdf"), '"'))
   } else if (png) {
     ggsave("Output/FIG3.png", width = 6.5, height = 9)
