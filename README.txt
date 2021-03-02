@@ -13,13 +13,11 @@ power analysis related to evaluating the survey effort necessary to detect
 several levels of population decline.
 
 .
-├── Archive                       # Older, unused code, etc., from prior iterations/sandboxing (not stored with online repo)
-├── MABM_analysis.Rproj           # RStudio R Project file. If using RStudio, open this first; if not, see MABM_analysis_overview.Rmd
-├── MABM_analysis_overview.html   # html file that can be opened for general flow of MABM data analysis
-├── MABM_analysis_overview.Rmd    # RMarkdown file that contains code for reproducing/directing entire analysis
-|   ├── Models                    # Species-specific GLMM fits (models can be loaded into R without re-running code)
-|   └── Raw_DB_outputs            # Necessary data exports from MABM Access Database (alternative to storing database with repo)
-├── Output                        # Data products derived using code in MABM_analysis_overview.Rmd and `R` directory
-├── R                             # R source code; see individual files for context/comments
-├── README.txt
-└── References                    # Scientific literature relevant to this project (not complete)
+├── MABM_analysis.Rproj           # RStudio R Project file. If using RStudio, open this first; if not, see MABM_analysis_overview.Rmd  
+├── MABM_analysis_overview.html   # html file that can be opened for general flow of MABM data analysis  
+├── MABM_analysis_overview.Rmd    # RMarkdown file that contains code for reproducing/directing entire analysis  
+├── Output                        # Data products derived using code in MABM_analysis_overview.Rmd and `R` directory  
+|    ├── Models                    # Species-specific GLMM fits (models can be loaded into R without re-running code)  
+|    └── Raw_DB_outputs            # Necessary data exports from MABM Access Database (alternative to storing database with repo)  
+├── R                             # R source code; see individual files for context/comments  
+└── README.txt  
